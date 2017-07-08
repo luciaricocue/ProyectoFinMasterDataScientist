@@ -1,0 +1,212 @@
+---
+title: "Proyecto Fin de Master"
+author: "Lucia Rico Cuellar"
+date: "3 de julio de 2017"
+output: html_document
+---
+
+```{r, include=FALSE}
+library(data.table)
+library(reshape)
+library(zoo)
+library(lubridate)
+library(readr) 
+library(stats)
+library(xts)
+library(tidyquant)
+library(forecast)
+# setwd("C:/Users/Lucía/Desktop/ProyectoFinMasterDataScientist")
+source("../src/funciones.R")
+
+```
+
+
+```{r, include=FALSE }
+
+# montmelo_la_junquera <- fread("../dat/06020101_montmelo_la_junquera.csv")
+# sevilla_cadiz <- fread("../dat/06020203_sevilla_cadiz.csv")
+```
+
+Vamos a usar los datos de series mensuales de tráfico en autopistas estatales de peaje, proporcionados por el Ministerio de Fomento del Gobierno de España en su web: http://www.fomento.gob.es/BE/?nivel=2&orden=06000000
+
+Leemos y limpiamos los datos:
+
+Vamos a hacer lo mismo a todos los ficheros, pues tienen la misma estructura (excepto el de los datos globales "Total.", que no lo usaremos). 
+El fichero de cada autopista contiene datos para hacer 2 tablas, una de datos totales y otra de datos mensuales. Contiene información de la longitud de la autopista, IMD de vehículos pesados y totales y variaciones respecto al año anterior de los IMDs.
+La función lee_autopista va a borrar columnas y filas sin información, renombrar las columnas, poner los tipos adecuados a cada columnas (pues las columnas que deberían de venir con tipos numéricos no vienen así ni las que deberían de venir en formato fecha) y se va a quedar solamente con los datos mensuales, va a quitar los totales (con los que podría construirse otra tabla, en la función está implementado el código para ello pero no lo devuelve porque de momento no lo usaremos).
+La función va a devolver sólo las columnas que vamos a estudiar, las fechas e IMD_total. El resto de columnas tienen dependencia lineal con esta columna (variaciones e IMD_pesados), por lo que no aportan información extra.
+
+```{r }
+
+sevilla_cadiz <- lee_autopista(fread("../dat/06020203_sevilla_cadiz.csv"))
+# montmelo_la_junquera <- lee_autopista(fread("../dat/06020101_montmelo_la_junquera.csv"))
+
+```
+
+Empezamos analizando la autopista Sevilla-Cádiz:
+Ahora vamos a empezar a tratarlos como series temporales:
+
+```{r}
+
+q1 <- sevilla_cadiz
+serie_mensual <- as_xts(q1, date_col = Mes_numeric)
+plot(serie_mensual)
+```
+
+
+
+Seleccionar 1 ventada de la serie temporal:
+```{r}
+# subset the time series (June 2014 to December 2014)
+train <- window(serie_mensual, start=c(1990), end=c(2014)) 
+
+# plot series
+plot(train)
+```
+
+```{r}
+# subset the time series (June 2014 to December 2014)
+test <- window(serie_mensual, start=c(2015), end=c(2017)) 
+
+# plot series
+plot(test)
+```
+
+Probamos a pasar de los datos mensuales a los datos promedios diarios por mes:
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+Seasonal Decomposition:
+A time series with additive trend, seasonal, and irregular components can be decomposed using the stl() function. Note that a series with multiplicative effects can often by transformed into series with additive effects through a log transformation (i.e., newts <- log(myts)).
+
+```{r}
+autopista_MENSUAL <- autopista_MENSUAL %>% arrange(yearmon)
+serie_mensual_ts <- ts(autopista_MENSUAL$IMD_total, start=c(1990, 1), end=c(2017, 3), frequency=12)
+plot(serie_mensual_ts)
+```
+
+```{r}
+# Seasonal decomposition
+fit <- stl(serie_mensual_ts, s.window="period")
+plot(fit)
+
+
+
+```
+
+```{r}
+
+# additional plots
+monthplot(serie_mensual_ts)
+
+
+```
+
+```{r}
+# additional plots
+
+seasonplot(serie_mensual_ts)
+
+```
+Exponential Models
+Both the HoltWinters() function in the base installation, and the ets() function in the forecast package, can be used to fit exponential models.
+
+```{r}
+# simple exponential - models level
+fit <- HoltWinters(serie_mensual_ts, beta=FALSE, gamma=FALSE)
+print(fit)
+plot(fit)
+```
+
+```{r}
+# double exponential - models level and trend
+fit <- HoltWinters(serie_mensual_ts, gamma=FALSE)
+print(fit)
+plot(fit)
+
+```
+
+```{r}
+# triple exponential - models level, trend, and seasonal components
+fit <- HoltWinters(serie_mensual_ts)
+print(fit)
+plot(fit)
+
+```
+
+```{r}
+# predictive accuracy
+library(forecast)
+accuracy(fit)
+
+
+```
+
+```{r}
+# predict next three future values
+library(forecast)
+forecast(fit, 3)
+plot(forecast(fit, 3))
+```
+
+ARIMA Models
+The arima() function can be used to fit an autoregressive integrated moving averages model. Other useful functions include:
+
+lag(ts, k)	lagged version of time series, shifted back k observations
+diff(ts, differences=d)	difference the time series d times
+ndiffs(ts)	Number of differences required to achieve stationarity (from the forecast package)
+acf(ts)	autocorrelation function
+pacf(ts)	partial autocorrelation function
+adf.test(ts)	Augemented Dickey-Fuller test. Rejecting the null hypothesis suggests that a time series is stationary (from the tseries package)
+Box.test(x, type="Ljung-Box")	Pormanteau test that observations in vector or time series x are independent
+Note that the forecast package has somewhat nicer versions of acf() and pacf() called Acf() and Pacf() respectively.
+```{r}
+# fit an ARIMA model of order P, D, Q
+fit <- arima(myts, order=c(p, d, q)
+
+# predictive accuracy
+library(forecast)
+accuracy(fit)
+
+# predict next 5 observations
+library(forecast)
+forecast(fit, 5)
+plot(forecast(fit, 5))
+```
+
+
+Automated Forecasting
+The forecast package provides functions for the automatic selection of exponential and ARIMA models. The ets() function supports both additive and multiplicative models. The auto.arima() function can handle both seasonal and nonseasonal ARIMA models. Models are chosen to maximize one of several fit criteria.
+
+```{r}
+library(forecast)
+# Automated forecasting using an exponential model
+fit <- ets(myts)
+
+# Automated forecasting using an ARIMA model
+fit <- auto.arima(myts)
+```
+
+Going Further
+There are many good online resources for learning time series analysis with R. These include A little book of R for time series by Avril Chohlan and DataCamp's manipulating time series in R course by Jeffrey Ryan.
+
+Pasar de datos totales mensuales a datos DIARIOS promedios por mes
+```{r}
+monthdays <- rep(c(31,28,31,30,31,30,31,31,30,31,30,31),14)
+monthdays
+```
+
+```{r}
+monthdays[26 + (4*12)*(0:2)] <- 29
+monthdays
+```
+
