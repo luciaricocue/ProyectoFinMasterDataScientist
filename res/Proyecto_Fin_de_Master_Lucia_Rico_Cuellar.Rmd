@@ -4,8 +4,10 @@ author: "Lucia Rico Cuellar"
 date: "3 de julio de 2017"
 output: html_document
 ---
+<meta http-equiv='Content-Type' content='text/html; charset=utf-8' /> 
 
 ```{r, include=FALSE}
+
 library(data.table)
 library(reshape)
 library(zoo)
@@ -15,6 +17,7 @@ library(stats)
 library(xts)
 library(tidyquant)
 library(forecast)
+library(ggplot2)
 # setwd("C:/Users/Lucía/Desktop/ProyectoFinMasterDataScientist")
 source("../src/funciones.R")
 
@@ -38,175 +41,242 @@ La función va a devolver sólo las columnas que vamos a estudiar, las fechas e IM
 
 ```{r }
 
-sevilla_cadiz <- lee_autopista(fread("../dat/06020203_sevilla_cadiz.csv"))
+autopista <- lee_autopista(fread("../dat/06020203_sevilla_cadiz.csv"))
 # montmelo_la_junquera <- lee_autopista(fread("../dat/06020101_montmelo_la_junquera.csv"))
 
 ```
 
 Empezamos analizando la autopista Sevilla-Cádiz:
-Ahora vamos a empezar a tratarlos como series temporales:
+Vamos a analizar con y sin aplicar logaritmos.
 
+PRIMERO SIN APLICAR LOG.
+1-Creo serie temporal:
 ```{r}
 
-q1 <- sevilla_cadiz
-serie_mensual <- as_xts(q1, date_col = Mes_numeric)
-plot(serie_mensual)
+q1 <- autopista
+# ts_mensual <- as_xts(q1, date_col = Mes_numeric)
+ts_mensual <- ts(autopista$IMD_total, start=c(1990, 1), end=c(2017, 3), frequency=12)
+plot(ts_mensual)
+```
+
+Summary
+```{r}
+summary(ts_mensual)
 ```
 
 
-
-Seleccionar 1 ventada de la serie temporal:
+2-Descomposición estacional:
 ```{r}
-# subset the time series (June 2014 to December 2014)
-train <- window(serie_mensual, start=c(1990), end=c(2014)) 
+fit <- stl(ts_mensual, s.window="period")
+plot(fit)
+```
 
-# plot series
+```{r}
+
+monthplot(ts_mensual, col=1:12, pch=19)
+
+```
+
+```{r}
+
+seasonplot(ts_mensual, year.labels=TRUE, year.labels.left=TRUE, col=1:27, pch=19)
+
+```
+
+Clara estacionariedad con tendencia creciente el último año, aunque años anteriores se mantuvo sin tendencia ni ciclos(tren muestra tanto tendencia como ciclos).
+
+Seleccionar 1 ventana de la serie temporal para train y otra para test:
+```{r}
+
+train <- window(ts_mensual, start=c(1990, 01), end=c(2014, 12))
 plot(train)
 ```
 
 ```{r}
-# subset the time series (June 2014 to December 2014)
-test <- window(serie_mensual, start=c(2015), end=c(2017)) 
 
-# plot series
+test <- window(ts_mensual, start=c(2015, 01), end=c(2016, 12)) 
 plot(test)
 ```
 
-Probamos a pasar de los datos mensuales a los datos promedios diarios por mes:
+3-Modelado exponencial ETS y predicción
 ```{r}
+fit <- ets(train)
+fit
+```
+
+
+```{r}
+prediccion <- forecast(fit)
+```
+
+```{r}
+par(mfrow=c(1,1))
+plot(prediccion)
+lines(test, col="red")
+```
+
+Precisión:
+```{r}
+accuracy(prediccion,test)
+```
+
+4-Modelado ARIMA y predicción:
+```{r}
+fit2 <- auto.arima(train)
+fit2
+```
+
+
+```{r}
+prediccion2 <- forecast(fit2)
+prediccion2
+```
+```{r}
+plot(prediccion2)
+lines(test, col="red")
+```
+
+Precisión:
+```{r}
+accuracy(prediccion2,test)
+```
+
+Comparando con la anterior predice peor el de ARIMA (mayor RMSE).
+```{r}
+accuracy(prediccion,test)
+```
+
+Analizando los residuos: No se ve correlación, la distribución de residuos es normal y pasa el test de de portmanteau, luego los intervalos de predicción son fiables
+
+```{r}
+hist(residuals(fit2))
 
 ```
 
 
-
-
-
-
-
-
-
-Seasonal Decomposition:
-A time series with additive trend, seasonal, and irregular components can be decomposed using the stl() function. Note that a series with multiplicative effects can often by transformed into series with additive effects through a log transformation (i.e., newts <- log(myts)).
-
 ```{r}
-autopista_MENSUAL <- autopista_MENSUAL %>% arrange(yearmon)
-serie_mensual_ts <- ts(autopista_MENSUAL$IMD_total, start=c(1990, 1), end=c(2017, 3), frequency=12)
-plot(serie_mensual_ts)
+tsdisplay(residuals(fit2))
+
 ```
 
 ```{r}
-# Seasonal decomposition
-fit <- stl(serie_mensual_ts, s.window="period")
+Box.test(residuals(fit2), type="Ljung")
+```
+
+Voy a probar a hacer lo mismo pero aplicando primero log:
+1-B-Creo serie temporal:
+```{r}
+l.ts_mensual <- log(ts_mensual)
+par(mfrow=c(2,1))
+plot(ts_mensual)
+plot(l.ts_mensual)
+
+
+```
+
+Summary:
+```{r}
+summary(l.ts_mensual)
+```
+
+2-B-Descomposición estacional:
+```{r}
+fit <- stl(l.ts_mensual, s.window="period")
 plot(fit)
+```
 
+```{r}
 
+monthplot(l.ts_mensual, col=1:12, pch=19)
 
 ```
 
 ```{r}
 
-# additional plots
-monthplot(serie_mensual_ts)
 
+seasonplot(l.ts_mensual, year.labels=TRUE, year.labels.left=TRUE, col=1:27, pch=19)
+
+```
+
+
+
+```{r}
+
+train <- window(l.ts_mensual, start=c(1990, 01), end=c(2014, 12)) 
+plot(train)
+```
+
+```{r}
+
+test <- window(l.ts_mensual, start=c(2015, 01), end=c(2016, 12))
+plot(test)
+```
+
+3-B-Modelado exponencial ETS y predicción
+```{r}
+fit <- ets(train)
+fit
+```
+
+```{r}
+prediccion <- forecast(fit)
+```
+
+```{r}
+par(mfrow=c(1,1))
+plot(prediccion)
+lines(test, col="red")
+```
+
+Precisión:
+```{r}
+accuracy(prediccion,test)
+```
+
+4-B-Modelado ARIMA y predicción:
+```{r}
+fit2 <- auto.arima(train)
+fit2
+```
+
+
+```{r}
+prediccion2 <- forecast(fit2)
+prediccion2
+```
+
+
+```{r}
+plot(prediccion2)
+lines(test, col="red")
+```
+
+Precisión:
+```{r}
+accuracy(prediccion2,test)
+```
+
+Ahora el RMSE es menor en test de ETS y en train de ARIMA.
+```{r}
+accuracy(prediccion,test)
+```
+
+Analizando los residuos: No se ve correlación, la distribución de residuos es normal y pasa el test de de portmanteau, luego los intervalos de predicción son fiables 
+```{r}
+tsdisplay(residuals(fit2))
 
 ```
 
 ```{r}
-# additional plots
-
-seasonplot(serie_mensual_ts)
-
-```
-Exponential Models
-Both the HoltWinters() function in the base installation, and the ets() function in the forecast package, can be used to fit exponential models.
-
-```{r}
-# simple exponential - models level
-fit <- HoltWinters(serie_mensual_ts, beta=FALSE, gamma=FALSE)
-print(fit)
-plot(fit)
-```
-
-```{r}
-# double exponential - models level and trend
-fit <- HoltWinters(serie_mensual_ts, gamma=FALSE)
-print(fit)
-plot(fit)
+hist(residuals(fit2))
 
 ```
 
 ```{r}
-# triple exponential - models level, trend, and seasonal components
-fit <- HoltWinters(serie_mensual_ts)
-print(fit)
-plot(fit)
-
+Box.test(residuals(fit2),  type="Ljung")
 ```
 
 ```{r}
-# predictive accuracy
-library(forecast)
-accuracy(fit)
-
-
-```
-
-```{r}
-# predict next three future values
-library(forecast)
-forecast(fit, 3)
-plot(forecast(fit, 3))
-```
-
-ARIMA Models
-The arima() function can be used to fit an autoregressive integrated moving averages model. Other useful functions include:
-
-lag(ts, k)	lagged version of time series, shifted back k observations
-diff(ts, differences=d)	difference the time series d times
-ndiffs(ts)	Number of differences required to achieve stationarity (from the forecast package)
-acf(ts)	autocorrelation function
-pacf(ts)	partial autocorrelation function
-adf.test(ts)	Augemented Dickey-Fuller test. Rejecting the null hypothesis suggests that a time series is stationary (from the tseries package)
-Box.test(x, type="Ljung-Box")	Pormanteau test that observations in vector or time series x are independent
-Note that the forecast package has somewhat nicer versions of acf() and pacf() called Acf() and Pacf() respectively.
-```{r}
-# fit an ARIMA model of order P, D, Q
-fit <- arima(myts, order=c(p, d, q)
-
-# predictive accuracy
-library(forecast)
-accuracy(fit)
-
-# predict next 5 observations
-library(forecast)
-forecast(fit, 5)
-plot(forecast(fit, 5))
-```
-
-
-Automated Forecasting
-The forecast package provides functions for the automatic selection of exponential and ARIMA models. The ets() function supports both additive and multiplicative models. The auto.arima() function can handle both seasonal and nonseasonal ARIMA models. Models are chosen to maximize one of several fit criteria.
-
-```{r}
-library(forecast)
-# Automated forecasting using an exponential model
-fit <- ets(myts)
-
-# Automated forecasting using an ARIMA model
-fit <- auto.arima(myts)
-```
-
-Going Further
-There are many good online resources for learning time series analysis with R. These include A little book of R for time series by Avril Chohlan and DataCamp's manipulating time series in R course by Jeffrey Ryan.
-
-Pasar de datos totales mensuales a datos DIARIOS promedios por mes
-```{r}
-monthdays <- rep(c(31,28,31,30,31,30,31,31,30,31,30,31),14)
-monthdays
-```
-
-```{r}
-monthdays[26 + (4*12)*(0:2)] <- 29
-monthdays
+#
 ```
 

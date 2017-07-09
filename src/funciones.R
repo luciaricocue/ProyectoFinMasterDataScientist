@@ -84,6 +84,7 @@ lee_autopista <- function(autopista){
   autopista_MENSUAL$Mes_numeric <- as.yearmon(parse_date(autopista_MENSUAL$Mes_numeric,
                                                      "%b %Y",locale=locale("es")))
   autopista_MENSUAL$yearmon <- NULL
+  autopista_MENSUAL <- autopista_MENSUAL %>% arrange(Mes_numeric)
   return(autopista_MENSUAL[, c(8, 2)])
   
 }
