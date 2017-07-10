@@ -13,7 +13,10 @@ suppressMessages({
   library(tidyquant)
   library(forecast)
 })
-
+# setwd("C:/Users/Lucía/Desktop/ProyectoFinMasterDataScientist")
+# autopista <- fread("dat/06020701_madrid_guadalajara.csv")
+# autopista2 <- fread("dat/06020203_sevilla_cadiz.csv")
+# autopista3 <- fread("dat/06020801_madrid_ocaña.csv")
 
 # Vamos a hacer lo mismo a todos los ficheros, pues tienen la misma estructura (excepto el de los datos globales).
 #A todos los ficheros de autopista les haré  lo mismo:
@@ -22,7 +25,8 @@ lee_autopista <- function(autopista){
   #borro columnas sin información:
   autopista$V7 <- autopista$V8 <- NULL
   #borro filas al principio y final de la 1 a 6 y de la 362 a 368. Además la 34 que separa datos anuales de mensuales:
-  autopista <- autopista[!c(1:6, 34, 362:368) , ]
+  # autopista <- autopista[!c(1:6, 34, 362:368) , ]
+  autopista <- autopista[complete.cases(autopista$V3),]
   #separo la primera columna en Mes/Año y relleno las de año incompleto
   autopista <- as.data.frame(autopista)
   
@@ -53,14 +57,15 @@ lee_autopista <- function(autopista){
   
   
   
-  autopista_ANUAL <- autopista[1:27, 1:6]
-  autopista_MENSUAL <- autopista[28:354, ]
+  # autopista_ANUAL <- autopista[1:27, 1:6]
+  # autopista_MENSUAL <- autopista[28:354, ]
+  autopista_MENSUAL <- autopista[complete.cases(autopista$Mes),]
   
   # Porque los 0s los pilla como NAs
-  autopista_ANUAL <- autopista_ANUAL %>%
-    mutate(variacion_IMD_pes.porcentaje = ifelse(is.na(variacion_IMD_pes.porcentaje),
-                                                 100*(IMD_pesados-lead(IMD_pesados))/IMD_pesados, variacion_IMD_pes.porcentaje))
-  
+  # autopista_ANUAL <- autopista_ANUAL %>%
+  #   mutate(variacion_IMD_pes.porcentaje = ifelse(is.na(variacion_IMD_pes.porcentaje),
+  #                                                100*(IMD_pesados-lead(IMD_pesados))/IMD_pesados, variacion_IMD_pes.porcentaje))
+  # 
   
   
   # Sólo debería de tener NAs en los datos de 1990 de variaciones, porque no tengo datos del 1989 con los que comparar.
