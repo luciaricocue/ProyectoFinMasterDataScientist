@@ -34,7 +34,7 @@ source("../src/funciones.R")
 
 Vamos a usar los datos de series mensuales de tráfico en autopistas estatales de peaje, proporcionados por el Ministerio de Fomento del Gobierno de España en su web: http://www.fomento.gob.es/BE/?nivel=2&orden=06000000
 
-Leemos y limpiamos los datos:
+##Leemos y limpiamos los datos:
 
 Vamos a hacer lo mismo a todos los ficheros, pues tienen la misma estructura (excepto el de los datos globales "Total.", que no lo usaremos). 
 El fichero de cada autopista contiene datos para hacer 2 tablas, una de datos totales y otra de datos mensuales. Contiene información de la longitud de la autopista, IMD de vehículos pesados y totales y variaciones respecto al año anterior de los IMDs.
@@ -80,7 +80,7 @@ autopista <- lee_autopista(fread("../dat/06020203_sevilla_cadiz.csv"))
 ###1-Creo serie temporal:
 ```{r}
 
-q1 <- autopista
+# q1 <- autopista
 # ts_mensual <- as_xts(q1, date_col = Mes_numeric)
 ts_mensual <- ts(autopista$IMD_total, start=c(1990, 1), end=c(2017, 3), frequency=12)
 plot(ts_mensual)
@@ -133,18 +133,18 @@ fit
 
 
 ```{r}
-prediccion <- forecast(fit)
+prediccion1 <- forecast(fit)
 ```
 
 ```{r}
 par(mfrow=c(1,1))
-plot(prediccion)
+plot(prediccion1)
 lines(test, col="red")
 ```
 
 Precisión:
 ```{r}
-accuracy(prediccion,test)
+accuracy(prediccion1,test)
 ```
 
 ###4-Modelado ARIMA y predicción:
@@ -170,7 +170,7 @@ accuracy(prediccion2,test)
 
 Comparando con la anterior predice peor el de ARIMA (mayor RMSE).
 ```{r}
-accuracy(prediccion,test)
+accuracy(prediccion1,test)
 ```
 
 Analizando los residuos: No se ve correlación, la distribución de residuos es normal y pasa el test de de portmanteau, luego los intervalos de predicción son fiables
@@ -229,81 +229,104 @@ seasonplot(l.ts_mensual, year.labels=TRUE, year.labels.left=TRUE, col=1:27, pch=
 
 ```{r}
 
-train <- window(l.ts_mensual, start=c(1990, 01), end=c(2014, 12)) 
-plot(train)
+train_log <- window(l.ts_mensual, start=c(1990, 01), end=c(2014, 12)) 
+plot(train_log)
 ```
 
 ```{r}
 
-test <- window(l.ts_mensual, start=c(2015, 01), end=c(2016, 12))
-plot(test)
+test_log <- window(l.ts_mensual, start=c(2015, 01), end=c(2016, 12))
+plot(test_log)
 ```
 
 ###3-B-Modelado exponencial ETS y predicción
 ```{r}
-fit <- ets(train)
-fit
+fit_log <- ets(train_log)
+fit_log
 ```
 
 ```{r}
-prediccion <- forecast(fit)
+prediccion3 <- forecast(fit_log)
 ```
 
 ```{r}
 par(mfrow=c(1,1))
-plot(prediccion)
-lines(test, col="red")
+plot(prediccion3)
+lines(test_log, col="red")
 ```
 
 Precisión:
 ```{r}
-accuracy(prediccion,test)
+accuracy(prediccion3,test_log)
 ```
 
 ###4-B-Modelado ARIMA y predicción:
 ```{r}
-fit2 <- auto.arima(train)
-fit2
+fit2_log <- auto.arima(train_log)
+fit2_log
 ```
 
 
 ```{r}
-prediccion2 <- forecast(fit2)
-prediccion2
+prediccion4 <- forecast(fit2_log)
+prediccion4
 ```
 
 
 ```{r}
-plot(prediccion2)
-lines(test, col="red")
+plot(prediccion4)
+lines(test_log, col="red")
 ```
 
 Precisión:
 ```{r}
-accuracy(prediccion2,test)
+accuracy(prediccion4,test_log)
 ```
 
 Ahora el RMSE es menor en test de ETS y en train de ARIMA.
 ```{r}
-accuracy(prediccion,test)
+accuracy(prediccion3,test_log)
 ```
 
 Analizando los residuos: No se ve correlación, la distribución de residuos es normal y pasa el test de de portmanteau, luego los intervalos de predicción son fiables 
 ```{r}
-tsdisplay(residuals(fit2))
+tsdisplay(residuals(fit2_log))
 
 ```
 
 ```{r}
-hist(residuals(fit2))
+hist(residuals(fit2_log))
 
 ```
 
 ```{r}
-Box.test(residuals(fit2),  type="Ljung")
+Box.test(residuals(fit2_log),  type="Ljung")
+```
+RESUMIENDO INFORMACIÓN:
+Creo que de estas tablas sacaría la información para Shiny:
+```{r}
+#prediccion con ETS si aplicar log
+tabla_shiny1 <- as.data.frame(prediccion1)
+#prediccion con ARIMA si aplicar log
+tabla_shiny2 <- as.data.frame(prediccion2)
+#prediccion con ETS aplicando log
+tabla_shiny3 <- as.data.frame(prediccion3)
+#prediccion con ARIMA aplicando log
+tabla_shiny4 <- as.data.frame(prediccion4)
 ```
 
+Construyo una tabla comparativa con todos los modelos
 ```{r}
-#
+a <- as.data.frame(accuracy(prediccion1, test))
+a$modelo <- "ETS"
+b <- as.data.frame(accuracy(prediccion2, test))
+b$modelo <- "ARIMA"
+c <- as.data.frame(accuracy(prediccion3, test_log))
+c$modelo  <- "ETS_log"
+d <- as.data.frame(accuracy(prediccion4, test_log))
+d$modelo <- "ARIMA_log"
+compara_predicciones_modelos <- rbind(a, b, c, d)
+compara_predicciones_modelos
 ```
+
 
