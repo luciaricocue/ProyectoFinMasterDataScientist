@@ -13,10 +13,10 @@ suppressMessages({
   library(tidyquant)
   library(forecast)
 })
-# setwd("C:/Users/Lucía/Desktop/ProyectoFinMasterDataScientist")
-# autopista <- fread("dat/06020701_madrid_guadalajara.csv")
-# autopista2 <- fread("dat/06020203_sevilla_cadiz.csv")
-# autopista3 <- fread("dat/06020801_madrid_ocaña.csv")
+setwd("C:/Users/Lucía/Desktop/ProyectoFinMasterDataScientist")
+autopista <- fread("dat/06020701_madrid_guadalajara.csv")
+autopista <- fread("dat/06020203_sevilla_cadiz.csv")
+autopista3 <- fread("dat/06020801_madrid_ocaña.csv")
 
 # Vamos a hacer lo mismo a todos los ficheros, pues tienen la misma estructura (excepto el de los datos globales).
 #A todos los ficheros de autopista les haré  lo mismo:
@@ -40,7 +40,11 @@ lee_autopista <- function(autopista){
   #tipo numérico
   autopista$Longitud <- as.numeric(gsub(",", "\\.", autopista$Longitud))
   
-  autopista$IMD_total <- as.numeric(gsub( "\\.", "",as.character(autopista$IMD_total)))
+  # este es el que quita los 0s finales y falla en algunos valores, porque trata el . como ,decimal, por lo que los 0s finales no aportan información
+  # autopista$IMD_total <- as.numeric(gsub( "\\.", "",as.character(autopista$IMD_total)))
+  
+  # lo cambio por esto:
+  autopista$IMD_total <- 1000* autopista$IMD_total
   
   autopista$variacion_IMD_tot.porcentaje <- as.numeric(gsub( ",", "\\.",
                                                              autopista$variacion_IMD_tot.porcentaje))

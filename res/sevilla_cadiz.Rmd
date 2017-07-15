@@ -25,6 +25,7 @@ library(xts)
 library(tidyquant)
 library(forecast)
 library(ggplot2)
+library(knitr)
 # setwd("C:/Users/Lucía/Desktop/ProyectoFinMasterDataScientist")
 source("../src/funciones.R")
 
@@ -32,16 +33,17 @@ source("../src/funciones.R")
 
 
 
-Vamos a usar los datos de series mensuales de tráfico en autopistas estatales de peaje, proporcionados por el Ministerio de Fomento del Gobierno de España en su web: http://www.fomento.gob.es/BE/?nivel=2&orden=06000000
+Vamos a usar los datos de series mensuales de tráfico en autopistas estatales de peaje, proporcionados por el Ministerio de Fomento del Gobierno de España [en su web](
+http://www.fomento.gob.es/BE/?nivel=2&orden=06000000).
 
-##Leemos y limpiamos los datos:
+## Lectura y limpieza de datos
 
 Vamos a hacer lo mismo a todos los ficheros, pues tienen la misma estructura (excepto el de los datos globales "Total.", que no lo usaremos). 
 El fichero de cada autopista contiene datos para hacer 2 tablas, una de datos totales y otra de datos mensuales. Contiene información de la longitud de la autopista, IMD de vehículos pesados y totales y variaciones respecto al año anterior de los IMDs.
-La función lee_autopista va a borrar columnas y filas sin información, renombrar las columnas, poner los tipos adecuados a cada columnas (pues las columnas que deberían de venir con tipos numéricos no vienen así ni las que deberían de venir en formato fecha) y se va a quedar solamente con los datos mensuales, va a quitar los totales (con los que podría construirse otra tabla, en la función está implementado el código para ello pero no lo devuelve porque de momento no lo usaremos).
+La función `lee_autopista` va a borrar columnas y filas sin información, renombrar las columnas, poner los tipos adecuados a cada columnas (pues las columnas que deberían de venir con tipos numéricos no vienen así ni las que deberían de venir en formato fecha) y se va a quedar solamente con los datos mensuales, va a quitar los totales (con los que podría construirse otra tabla, en la función está implementado el código para ello pero no lo devuelve porque de momento no lo usaremos).
 La función va a devolver sólo las columnas que vamos a estudiar, las fechas e IMD_total. El resto de columnas tienen dependencia lineal con esta columna (variaciones e IMD_pesados), por lo que no aportan información extra.
 
-```{r }
+```{r,  echo=FALSE}
 
 autopista <- lee_autopista(fread("../dat/06020203_sevilla_cadiz.csv"))
 # autopista <- lee_autopista(fread("../dat/06020101_montmelo_la_junquera.csv"))
@@ -73,11 +75,14 @@ autopista <- lee_autopista(fread("../dat/06020203_sevilla_cadiz.csv"))
 # autopista <- lee_autopista(fread("../dat/06021001_alto_de_las_pedrizas_malaga.csv"))
 ```
 
-##Empezamos analizando la autopista Sevilla-Cádiz:
-##Vamos a analizar con y sin aplicar logaritmos.
 
-##PRIMERO SIN APLICAR LOG.
-###1-Creo serie temporal:
+
+Empezamos analizando la autopista Sevilla-Cádiz:
+Vamos a analizar con y sin aplicar logaritmos.
+
+## Estudio de los datos sin logartimos
+
+Creo serie temporal:
 ```{r}
 
 # q1 <- autopista
@@ -86,13 +91,17 @@ ts_mensual <- ts(autopista$IMD_total, start=c(1990, 1), end=c(2017, 3), frequenc
 plot(ts_mensual)
 ```
 
-Summary
+Resumen del ...
+
 ```{r}
 summary(ts_mensual)
 ```
 
 
-###2-Descomposición estacional:
+### Descomposición estacional
+
+
+
 ```{r}
 fit <- stl(ts_mensual, s.window="period")
 plot(fit)
@@ -125,7 +134,7 @@ test <- window(ts_mensual, start=c(2015, 01), end=c(2016, 12))
 plot(test)
 ```
 
-###3-Modelado exponencial ETS y predicción
+### Modelado exponencial ETS y predicción
 ```{r}
 fit <- ets(train)
 fit
@@ -191,7 +200,8 @@ Box.test(residuals(fit2), type="Ljung")
 ```
 
 ##Voy a probar a hacer lo mismo pero aplicando primero log:
-###1-B-Creo serie temporal:
+
+Creo serie temporal:
 ```{r}
 l.ts_mensual <- log(ts_mensual)
 par(mfrow=c(2,1))
@@ -302,7 +312,10 @@ hist(residuals(fit2_log))
 ```{r}
 Box.test(residuals(fit2_log),  type="Ljung")
 ```
-RESUMIENDO INFORMACIÓN:
+
+## Resumen de las predicciones anteriores
+
+
 Creo que de estas tablas sacaría la información para Shiny:
 ```{r}
 #prediccion con ETS si aplicar log
@@ -326,7 +339,10 @@ c$modelo  <- "ETS_log"
 d <- as.data.frame(accuracy(prediccion4, test_log))
 d$modelo <- "ARIMA_log"
 compara_predicciones_modelos <- rbind(a, b, c, d)
-compara_predicciones_modelos
+kable(compara_predicciones_modelos)
 ```
 
+```{r}
+
+```
 
