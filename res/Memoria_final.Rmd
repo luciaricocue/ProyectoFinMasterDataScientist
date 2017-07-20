@@ -1,0 +1,466 @@
+---
+title: "Proyecto Fin de Master"
+author: "Lucía Rico Cuéllar"
+date: "08 de julio de 2017"
+output: 
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    theme: united
+    highlight: tango
+---
+
+
+```{r, include=FALSE}
+library(data.table)
+library(reshape)
+library(zoo)
+library(lubridate)
+library(readr) 
+library(stats)
+library(xts)
+library(tidyquant)
+library(forecast)
+library(ggplot2)
+library(knitr)
+library(highcharter)
+source("../src/funciones.R")
+
+```
+
+
+
+Vamos a usar los datos de series mensuales de tráfico en autopistas estatales de peaje, proporcionados por el Ministerio de Fomento del Gobierno de España [en su web](
+http://www.fomento.gob.es/BE/?nivel=2&orden=06000000).
+
+## Lectura y limpieza de datos
+
+Vamos a hacer tres funciones de lectura y limpieza para sacar la información mensual y anual de los ficheros de las 28 autopistas, que tienen estructuras similares (excepto el fichero de los datos globales "Total.", que no lo usaremos). 
+Usaremos los datos MENSUALES obtenidos de la limpieza para construir las series temporales.
+Usaremos los datos anuales solo para calcular el promedio de IMD (Intensidad Medida Diaria) en los datos de test (lo veremos más adelante).
+Los datos de cada una de las 28 autopistas los hemos almacenado en formato .csv en la carpeta dat.
+Estas serían las 3 funciones:
+*`lee_TODAS_autopista` :función que lee todos los ficheros .csv almacenados en la carpeta dat y devuelve un data frame con todos los datos mensuales. 
+*`lee_autopista` :función que lee un solo .csv de una sola autopista seleccionada y devuelve un data frame con todos los datos mensuales. Es como la anterior pero para una sola autopista.
+*`lee_autopista_anual`: función que lee un solo .csv y devuelve los datos anuales. Tal como se ha indicado, solo la usaremos para calcular el IMD promedio.
+
+El fichero de cada autopista contiene datos para hacer 2 tablas, una de datos totales y otra de datos mensuale, ambas con información de la longitud de la autopista, IMD de vehículos pesados y totales y variaciones respecto al año anterior de los IMDs.
+Vamos a quedarnos a las salidas de las funciones mencionadas solo con los datos de fechas e IMD_total (IMD es una media de vehículos mensuales, pesados + ligeros, promediados por los días que tiene cada mes). Lo que intentaremos predecir los prócimos años será este IMD.
+El resto de columnas que descartamos, tienen dependencia lineal con esta columna (variaciones e IMD_pesados), por lo que no aportan información extra. Tampoco vamos a considerar la lingitud de la autopista.
+Usaremos el fichero `nombres_autopistas.txt` de la carpeta dat, que contiene los nombres de todas las 28 autopistas, en los que se ha conservado el código numérico que las identifica en la web del Ministerio por si se necesitara para cualquier revisión futura.
+
+```{r,  echo=FALSE, warning=FALSE}
+
+autopista_TODAS <- lee_TODAS_autopista()
+
+nombres_autopistas <- fread("../dat/nombres_autopistas.txt", header = F)
+colnames(nombres_autopistas) <- c("codigo_nombre_autopista")
+kable(nombres_autopistas)
+
+```
+
+
+Hacemos una inspección visutal para detectar posibles "falsos outliers", valores muy bajos que realmente no son outliers, sino erratas de conversión de los datos por acabar en .000 antes de limpiar los datos (hay veces que se añaden por error siendo el número entero de más de 3 cifras y otras veces se añaden como decimales). Encontramos algunos y los corregimos de cara a los datos que usará Shiny.
+
+```{r}
+
+falsos_outliers <- autopista_TODAS %>% filter(IMD_total < 50)
+falsos_outliers
+
+```
+
+Los corregimos:
+```{r}
+autopista_TODAS <- autopista_TODAS %>% mutate(IMD_total = ifelse(IMD_total < 50, IMD_total*1000, IMD_total))
+
+# write.csv(autopista_TODAS, "../dat/datos_TODAS_autopistas.txt") #Hemos guardado en memoria una copia
+```
+
+
+Vamos a basarnos para los estudios en el libro "Forecasting: principles and practice" de Rob J Hyndman y George Athanasopoulos [en su web](https://www.otexts.org/fpp/1) para predecir el `IMD_total` de los próximos periodos.
+
+Escogemos una autopista al azar: `montmelo_la_junquera`
+
+Vamos a analizarla en detalle  con y sin aplicar logaritmos en base 10. En cada caso (con y sin log) aplicaremos 2 modelos: ETS y ARIMA y a continuación aplicaremos la función forecast para predecir. Finalmente evaluaremos y compararemos los errores para elegir el mejor modelo.
+
+## Estudio de los datos sin logaritmos
+
+Creo serie temporal para esa autopista:
+```{r}
+nombre_elegido <- "06020101_montmelo_la_junquera"
+autopista <- autopista_TODAS %>% filter(nombre == nombre_elegido)
+autopista <- autopista[, 1:2]
+
+year_inicio <- year(autopista[1, 1])
+mes_inicio  <- month(autopista[1, 1])
+year_fin <- year(autopista[length(autopista$Mes_numeric), 1])
+mes_fin <- month(autopista[length(autopista$Mes_numeric), 1])
+
+ts_mensual <- ts(autopista$IMD_total, start=c(year_inicio, mes_inicio), end=c(year_fin, mes_fin), frequency=12)
+xts_mensual <- as_xts(autopista, date_col = Mes_numeric)
+
+```
+
+Para poder inspeccionar gráficamente los valores y hacer zoom representamos con paquete highcharter:
+```{r, warning=FALSE}
+
+highchart(type = "stock") %>%
+  hc_title(text = "Time Serie") %>% 
+  hc_subtitle(text = nombre_elegido) %>% 
+  hc_add_series(ts_mensual, name = "IMD") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+ 
+```
+
+Resumen de estadísticas básicas de los datos:
+```{r}
+summary(xts_mensual)
+```
+
+
+### Descomposición estacional
+
+```{r}
+autoplot(stl(ts_mensual, s.window="period"))
+```
+
+Lo más destacable es la clara estacionalidad anual. 
+Últimos años sin tendencia creciente ni decreciente. Hay ciclos de subida y bajada.
+
+### Selección de conjuntos de entrenamiento (train) y testeo (test)
+Seleccionar 1 ventana de la serie temporal para train y otra para test. Tenemos datos completos de 27 años (desde 1990 a 2016 ambos inclusive). 
+Se hace una primera prueba y se dejan los 5 últimos años para test (son aporximadamente el 20% de los datos) y se observa gráficamente que para todos los modelos se incrementa el error a partir del tercer año, por lo que se reduce el intervalo de test a 2 años. 
+NOTA: No se cree relevante presentar en este reporte los resultados de las pruebas para 5 años, pero si así se requisiera se adjuntan en otro ficher en la misma carpeta res `ANALISIS_DESCARTE_de_intervalos_test_prediccion_5años.Rmd`.
+
+Representamos los conjuntos de test y train:
+
+```{r, warning=FALSE}
+inicio_train <- 1990
+fin_train <- 2014
+inicio_test <- 2015
+fin_test <- 2016
+years_a_predecir <- 2
+train <- window(ts_mensual, start=c(inicio_train, 01), end=c(fin_train, 12))
+test <- window(ts_mensual, start=c(inicio_test, 01), end=c(fin_test, 12))
+highchart(type = "stock") %>% 
+  hc_title(text = "Conjuntos de entrenamiento y testeo") %>% 
+  hc_subtitle(text = "Divido los datos totales en los conjuntos train y test") %>% 
+  hc_add_series(train, name = "train") %>%
+  hc_add_series(test, name = "test") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+
+```
+
+
+### Modelado exponencial ETS y predicción
+Vamos a usar el suavizado exponencial, que se basa en la descripción de la tendencia, cliclo y estacionalidad la serie. Para ellos usaremos la función `ets()` y luego le aplicamos la función `forecast()` para predecir un intervalo de 2 años (años 2015 y 2016 completos):
+
+```{r}
+fit_ets <- ets(train)
+fit_ets
+```
+
+El modelo óptimo es ETS(M,Ad,M): error aditivo, tendencia aditiva amortiguada y estacionalidad multiplicativa.
+
+La predicción:
+
+```{r}
+prediccion_ets <- forecast(fit_ets, h = years_a_predecir*12)
+par(mfrow=c(1,1))
+plot(prediccion_ets)
+lines(test, col="red")
+
+```
+
+Dibujo el gráfico anterior de manera interactiva:
+
+```{r, warning= FALSE}
+highchart(type = "stock") %>%
+  hc_title(text = "Time Serie") %>% 
+  hc_subtitle(text = nombre_elegido) %>% 
+  hc_add_series(ts_mensual, name = "IMD") %>% 
+  hc_add_series(prediccion_ets, name = "IMD") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+
+```
+
+Precisión:
+Se analizará en un apartado posterior con más detalle, comparando todos los modelos:
+
+```{r}
+accuracy(prediccion_ets,test)
+```
+
+###Modelado ARIMA y predicción:
+Vamos a usar el modelado ARIMA basado en la descripción de autocorrelación (suma de un  modelado de media móvil (MA) y uno de autorregresión (AR)).
+Lo aplicaremos  mediante la función `auto.arima()` para modelar la serie y luego le aplicamos la función `forecast()` para predecir un intervalo de 2 años (años 2015 y 2016 completos):
+
+```{r}
+fit_arima <- auto.arima(train)
+fit_arima
+```
+
+El modelo óptimo es un ARIMA(1,1,3)(2,1,2)[12]:
+*La componente no estacional tiene orden 1 en la parte AR (autorregresiva), orden 3 en la parte AM (media móvil) y grado 1 de diferencia.
+*La componente estacional tiene orden 2 en la parte AR, orden 2 en la AM y grado 1 de diferencia.Tiene estacionalidad anual (12 meses) 
+
+La predicción:
+
+```{r}
+prediccion_arima <- forecast(fit_arima, h = years_a_predecir*12)
+par(mfrow=c(1,1))
+plot(prediccion_arima)
+lines(test, col="red")
+```
+
+Dibujo el gráfico anterior de manera interactiva:
+
+```{r, warning= FALSE}
+highchart(type = "stock") %>%
+  hc_title(text = "Time Serie") %>% 
+  hc_subtitle(text = nombre_elegido) %>% 
+  hc_add_series(ts_mensual, name = "IMD") %>% 
+  hc_add_series(prediccion_arima, name = "IMD") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+
+```
+
+Precisión:
+Se analizará en un apartado posterior con más detalle, comparando todos los modelos:
+
+```{r}
+accuracy(prediccion_arima, test)
+```
+
+Analizando los residuos del modelo ARIMA: No se ve correlación, la distribución de residuos es normal (aunque un poco ancha) y pasa el test de de portmanteau (p-valor próximo a 1), luego los intervalos de predicción son fiables.
+
+Distribución de los residuos:
+
+```{r}
+hist(residuals(fit_arima))
+
+```
+
+Correlación de los residuos:
+
+```{r}
+tsdisplay(residuals(fit_arima))
+
+```
+
+Test de de portmanteau:
+
+```{r}
+Box.test(residuals(fit_arima), type="Ljung")
+```
+
+
+##Ahora repito aplicando logaritmo en base 10 a la serie:
+
+Creo serie temporal:
+```{r, warning=FALSE}
+log_xts_mensual <- round(log10(ts_mensual), 2)
+highchart(type = "stock") %>% 
+  hc_title(text = "Time Serie") %>% 
+  hc_subtitle(text = "Montmelo-LaJunquera") %>% 
+  hc_add_series(log_xts_mensual, name = "IMD") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight())
+
+```
+
+Resumen de estadísticas básicas de los datos:
+
+```{r}
+summary(log_xts_mensual)
+```
+
+###Descomposición estacional:
+
+```{r}
+autoplot(stl(log_xts_mensual, s.window="period"))
+```
+
+En este caso sigue siendo estacional y cíclica, y parece que la tendencia si que es creciente y no constante.
+
+### Selección de conjuntos de entrenamiento (train) y testeo (test)
+
+Igualmente elijo los 2 años (2015 y 2016 completos):
+
+```{r, warning=FALSE}
+
+train_log <- window(log_xts_mensual, start=c(inicio_train, 01), end=c(fin_train, 12))
+test_log <- window(log_xts_mensual, start=c(inicio_test, 01), end=c(fin_test, 12))
+highchart(type = "stock") %>% 
+  hc_title(text = "Conjuntos de entrenamiento y testeo") %>% 
+  hc_subtitle(text = "Divido los datos totales en los conjuntos train y test") %>% 
+  hc_add_series(train_log, name = "train") %>%
+  hc_add_series(test_log, name = "test") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+
+```
+
+###Modelado exponencial ETS y predicción
+
+```{r}
+fit_ets_log <- ets(train_log)
+fit_ets_log
+```
+
+El modelo óptimo es ETS(M,N,A): error multiplicativo, sin tendencia y estacionalidad aditiva.
+
+La predicción:
+
+```{r}
+prediccion_ets_log <- forecast(fit_ets_log, h = 12*years_a_predecir)
+par(mfrow=c(1,1))
+plot(prediccion_ets_log )
+lines(test_log, col="red")
+```
+
+Dibujo el gráfico anterior de manera interactiva:
+
+```{r, warning= FALSE}
+highchart(type = "stock") %>%
+  hc_title(text = "Time Serie") %>% 
+  hc_subtitle(text = nombre_elegido) %>% 
+  hc_add_series(log_xts_mensual, name = "IMD") %>% 
+  hc_add_series(prediccion_ets_log, name = "IMD") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+
+```
+
+Precisión:
+Se analizará en un apartado posterior con más detalle, comparando todos los modelos:
+
+```{r}
+accuracy(prediccion_ets_log,test_log)
+```
+
+
+###Modelado ARIMA y predicción:
+
+```{r}
+fit_arima_log <- auto.arima(train_log)
+prediccion_arima_log <- forecast(fit_arima_log, h = 12*years_a_predecir)
+plot(prediccion_arima_log)
+lines(test_log, col="red")
+```
+
+Dibujo el gráfico anterior de manera interactiva:
+
+```{r, warning= FALSE}
+highchart(type = "stock") %>%
+  hc_title(text = "Time Serie") %>% 
+  hc_subtitle(text = nombre_elegido) %>% 
+  hc_add_series(log_xts_mensual, name = "IMD") %>% 
+  hc_add_series(prediccion_arima_log, name = "IMD") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+
+```
+
+Analizando los residuos del modelo ARIMA: No se ve correlación, la distribución de residuos es normal y pasa el test de de portmanteau, luego los intervalos de predicción son fiables 
+
+Correlación de los residuos:
+
+```{r}
+tsdisplay(residuals(fit_arima_log))
+
+```
+
+Distribución de los residuos:
+
+```{r}
+hist(residuals(fit_arima_log))
+
+```
+
+
+Test de de portmanteau
+
+```{r}
+Box.test(residuals(fit_arima_log),  type="Ljung")
+```
+
+Precisión:
+Se analizará en un apartado posterior con más detalle, comparando todos los modelos:
+
+```{r}
+accuracy(prediccion_arima_log,test_log)
+```
+
+
+## Comparativa de las precisiones/errores de las predicciones anteriores
+
+Construyo una tabla comparativa con los errores de todos los modelos.
+Nos quedamos los datos de test para comparar solo esos resultados, pues son los que más error tienen (respecto a los de train).
+Vamos a hacer una función que construye la tabla comparativa. Le pasamos a la función las prediciones obtenidas y los datos de test (para calcular también el error porcentual dividiendo error MAE/RMSE entre el promedio de los datos de test):
+
+```{r}
+inicio_test <- 2015
+fin_test <- 2016
+ruta<- paste("../dat/",nombre_elegido,".csv", sep="")
+autopista_cmd <- fread(ruta, header = F)
+datos_anuales <- lee_autopista_anual(autopista_cmd)
+a <- c(datos_anuales[datos_anuales$Year == inicio_test,1],
+                       datos_anuales[datos_anuales$Year == fin_test,1])
+IME_prom_years <- mean(a)
+                                     
+                                    
+compara_predicciones_modelos <- construye_tabla_comparativa(prediccion_ets, prediccion_arima, prediccion_ets_log, prediccion_arima_log, IME_prom_years)
+#pasamos los datos de test para calcular el error porcentual (dividiendo error MAE o RMSE entre el promedio de los datos de test)
+
+kable(compara_predicciones_modelos, digits = 2)
+```
+
+## Aplicación de los 4 modelos al resto de autopistas
+
+Por analogía, generamos un código que va a calcular los errores MAE/ RMSE resultantes de aplicar los 4 modelos (ETS/ ARIMA con y sin logaritmos) a cada autopista con un intervalo predictivo de 2 años (próximos 2015 y 2016). Esta sería la tabla resultante:
+NOTA: Esta ejecución tarda unos 15-18 minutos aproximadamente, por lo que se facilita en la carpeta dat una copia del resultado `comparando_TODOS.txt`, y vamos a trabajar con ella en lo que sigue, pero puede ejecutarse desde aquí descomentando la linea `source("../src/codigo_genera_comparando_TODOS.R")`.
+
+```{r, warning= FALSE}
+# source("../src/codigo_genera_comparando_TODOS.R")
+
+comparando_TODOS <- fread("../dat/comparando_TODOS.txt", header = T, select = c(2:7))
+
+kable(comparando_TODOS, digits = 2)
+
+
+```
+
+Inspeccionando el resultado, vemos cual es el mejor modelo para minimizar el error al aplicarlo a la serie de cada autopista:
+
+```{r}
+comparando_minimos <- comparando_TODOS %>% group_by(nombre, modelo) %>%
+  summarise(error_minimo = min(RMSE, MAE, RMSE_porc, MAE_porc))
+comparando_minimos <- comparando_minimos %>% mutate(filtro = min(error_minimo))
+
+resumen <- comparando_minimos %>% filter(error_minimo == filtro) %>% select(c(1:3)) %>% arrange(-error_minimo)
+
+kable(resumen, digits = 2)
+```
+
+A continuación vamos a hacer una representación en Shiny de las series de todas las autopistas y de las predicciones con los modelos óptimos respectivos. Se mostrará en html en el documento `.Rmd`. 
+
+Se deja como posible mejora el probar otros modelos a las autopistas con mayores errores para reducir el error, pero se escapa del alcance de este proyecto.
+```{r}
+
+```
+

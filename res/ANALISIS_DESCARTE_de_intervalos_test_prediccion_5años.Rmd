@@ -1,0 +1,338 @@
+---
+title: "Proyecto Fin de Master"
+author: "Lucía Rico Cuéllar"
+date: "08 de julio de 2017"
+output: 
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    theme: united
+    highlight: tango
+---
+
+
+```{r, include=FALSE}
+
+library(data.table)
+library(reshape)
+library(zoo)
+library(lubridate)
+library(readr) 
+library(stats)
+library(xts)
+library(tidyquant)
+library(forecast)
+library(ggplot2)
+library(knitr)
+library(highcharter)
+source("../src/funciones.R")
+
+```
+
+Se presentan gráficas de predicción de intervalos de 5 años para 2 autopistas de prueba con diferente patrón, y se observa que a partir del tercer año empeoran las predicciones en todos los modelos de ambas autopistas, por lo que finalmente se elige un periodo de predicción de 2 años:
+
+## Lectura y limpieza de datos
+
+```{r,  echo=FALSE}
+
+autopista <- lee_autopista(fread("../dat/06020101_montmelo_la_junquera.csv"), "06020101_montmelo_la_junquera")
+
+```
+
+Empezamos analizando la autopista : `06020101_montmelo_la_junquera.csv`
+Vamos a analizar con y sin aplicar logaritmos en base 10.
+
+## Estudio de los datos sin logartimos
+
+Creo serie temporal y la pinto completa:
+```{r}
+ts_mensual <- ts(autopista$IMD_total, start=c(1990, 1), end=c(2017, 3), frequency=12)
+xts_mensual <- as_xts(autopista, date_col = Mes_numeric)
+
+```
+
+Para poder inspeccionar el detalle de los valores en la propia gráfica y hacer zoom:
+
+```{r}
+highchart(type = "stock") %>% 
+  hc_title(text = "Time Serie") %>% 
+  hc_subtitle(text = "06020101_montmelo_la_junquera") %>% 
+  hc_add_series(ts_mensual, name = "IMD") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+```
+
+Resumen de estadísticas básicas de los datos:
+```{r}
+summary(xts_mensual)
+```
+
+
+### Descomposición estacional
+
+```{r}
+
+ts_mensual <- ts(autopista$IMD_total, start=c(1990, 1), end=c(2017, 3), frequency=12)
+autoplot(stl(ts_mensual, s.window="period"))
+
+```
+
+Intervalo de test 5 años:
+```{r}
+
+train <- window(ts_mensual, start=c(1990, 01), end=c(2011, 12))
+test <- window(ts_mensual, start=c(2012, 01), end=c(2016, 12))
+highchart(type = "stock") %>% 
+  hc_title(text = "Conjuntos de entrenamiento y testeo") %>% 
+  hc_subtitle(text = "Divido los datos totales en los conjuntos train y test") %>% 
+  hc_add_series(train, name = "train") %>%
+  hc_add_series(test, name = "test") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+
+```
+
+
+### Modelado exponencial ETS y predicción
+```{r}
+
+fit_ets <- ets(train)
+prediccion_ets <- forecast(fit_ets, h=5*12)
+par(mfrow=c(1,1))
+plot(prediccion_ets)
+lines(test, col="red")
+
+```
+
+
+
+
+###Modelado ARIMA y predicción:
+```{r}
+fit_arima <- auto.arima(train)
+prediccion_arima <- forecast(fit_arima, h=5*12)
+par(mfrow=c(1,1))
+plot(prediccion_arima)
+lines(test, col="red")
+```
+
+
+
+##Voy a probar a hacer lo mismo pero aplicando primero log:
+
+Creo serie temporal:
+```{r}
+log_xts_mensual <- round(log10(ts_mensual), 2)
+highchart(type = "stock") %>% 
+  hc_title(text = "Time Serie") %>% 
+  hc_subtitle(text = "06020101_montmelo_la_junquera") %>% 
+  hc_add_series(log_xts_mensual, name = "IMD") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight())
+
+
+```
+
+Resumen de estadísticas básicas de los datos:
+```{r}
+summary(log_xts_mensual)
+```
+
+###Descomposición estacional:
+```{r}
+autoplot(stl(log_xts_mensual, s.window="period"))
+```
+
+
+```{r}
+
+train_log <- window(log_xts_mensual, start=c(1990, 01), end=c(2011, 12))
+test_log <- window(log_xts_mensual, start=c(2012, 01), end=c(2016, 12))
+highchart(type = "stock") %>% 
+  hc_title(text = "Conjuntos de entrenamiento y testeo") %>% 
+  hc_subtitle(text = "Divido los datos totales en los conjuntos train y test") %>% 
+  hc_add_series(train_log, name = "train") %>%
+  hc_add_series(test_log, name = "test") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+
+```
+
+
+###Modelado exponencial ETS y predicción
+```{r}
+fit_ets_log <- ets(train_log)
+prediccion_ets_log <- forecast(fit_ets_log, h=12*5)
+par(mfrow=c(1,1))
+plot(prediccion_ets_log )
+lines(test_log, col="red")
+```
+
+
+###Modelado ARIMA y predicción:
+```{r}
+fit_arima_log <- auto.arima(train_log)
+prediccion_arima_log <- forecast(fit_arima_log, h=12*5)
+plot(prediccion_arima_log)
+lines(test_log, col="red")
+```
+
+
+Analizamos ahora la autopista : `06020701_madrid_guadalajara`
+Vamos a analizar con y sin aplicar logaritmos en base 10.
+
+## Lectura y limpieza de datos
+
+```{r,  echo=FALSE}
+
+autopista <- lee_autopista(fread("../dat/06020701_madrid_guadalajara.csv"), "06020701_madrid_guadalajara")
+
+```
+
+## Estudio de los datos sin logartimos
+
+Creo serie temporal y la pinto completa:
+```{r}
+ts_mensual <- ts(autopista$IMD_total, start=c(1990, 1), end=c(2017, 3), frequency=12)
+xts_mensual <- as_xts(autopista, date_col = Mes_numeric)
+
+```
+
+Para poder inspeccionar el detalle de los valores en la propia gráfica y hacer zoom:
+
+```{r}
+highchart(type = "stock") %>% 
+  hc_title(text = "Time Serie") %>% 
+  hc_subtitle(text = "06020701_madrid_guadalajara") %>% 
+  hc_add_series(ts_mensual, name = "IMD") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+```
+
+Resumen de estadísticas básicas de los datos:
+```{r}
+summary(xts_mensual)
+```
+
+
+### Descomposición estacional
+
+```{r}
+ts_mensual <- ts(autopista$IMD_total, start=c(1990, 1), end=c(2017, 3), frequency=12)
+autoplot(stl(ts_mensual, s.window="period"))
+
+```
+
+Intervalo de test 5 años:
+```{r}
+
+train <- window(ts_mensual, start=c(1990, 01), end=c(2011, 12))
+test <- window(ts_mensual, start=c(2012, 01), end=c(2016, 12))
+highchart(type = "stock") %>% 
+  hc_title(text = "Conjuntos de entrenamiento y testeo") %>% 
+  hc_subtitle(text = "Divido los datos totales en los conjuntos train y test") %>% 
+  hc_add_series(train, name = "train") %>%
+  hc_add_series(test, name = "test") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+
+```
+
+
+### Modelado exponencial ETS y predicción
+```{r}
+fit_ets <- ets(train)
+prediccion_ets <- forecast(fit_ets, h=5*12)
+par(mfrow=c(1,1))
+plot(prediccion_ets)
+lines(test, col="red")
+
+```
+
+
+###Modelado ARIMA y predicción:
+```{r}
+fit_arima <- auto.arima(train)
+prediccion_arima <- forecast(fit_arima, h=5*12)
+par(mfrow=c(1,1))
+plot(prediccion_arima)
+lines(test, col="red")
+```
+
+
+
+##Voy a probar a hacer lo mismo pero aplicando primero log:
+
+Creo serie temporal:
+```{r}
+log_xts_mensual <- round(log10(ts_mensual), 2)
+highchart(type = "stock") %>% 
+  hc_title(text = "Time Serie") %>% 
+  hc_subtitle(text = "06020701_madrid_guadalajara") %>% 
+  hc_add_series(log_xts_mensual, name = "IMD") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight())
+
+
+```
+
+Resumen de estadísticas básicas de los datos:
+```{r}
+summary(log_xts_mensual)
+```
+
+###Descomposición estacional:
+```{r}
+autoplot(stl(log_xts_mensual, s.window="period"))
+```
+
+
+```{r}
+
+train_log <- window(log_xts_mensual, start=c(1990, 01), end=c(2011, 12))
+test_log <- window(log_xts_mensual, start=c(2012, 01), end=c(2016, 12))
+highchart(type = "stock") %>% 
+  hc_title(text = "Conjuntos de entrenamiento y testeo") %>% 
+  hc_subtitle(text = "Divido los datos totales en los conjuntos train y test") %>% 
+  hc_add_series(train_log, name = "train") %>%
+  hc_add_series(test_log, name = "test") %>% 
+  hc_rangeSelector(inputEnabled = TRUE) %>% 
+  hc_scrollbar(enabled = TRUE) %>% 
+  hc_add_theme(hc_theme_gridlight()) 
+
+```
+
+
+###Modelado exponencial ETS y predicción
+```{r}
+fit_ets_log <- ets(train_log)
+prediccion_ets_log <- forecast(fit_ets_log, h=12*5)
+par(mfrow=c(1,1))
+plot(prediccion_ets_log )
+lines(test_log, col="red")
+```
+
+
+###Modelado ARIMA y predicción:
+```{r}
+fit_arima_log <- auto.arima(train_log)
+prediccion_arima_log <- forecast(fit_arima_log, h=12*5)
+plot(prediccion_arima_log)
+lines(test_log, col="red")
+```
+
+###Conclusiones:
+Se observa claramente en todos los modelos que a partir del tercer año las predicciones se desvían del conjunto de test.
+
+
+
+
