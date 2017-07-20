@@ -37,7 +37,11 @@ Se presentan gráficas de predicción de intervalos de 5 años para 2 autopistas de
 
 ```{r,  echo=FALSE}
 
-autopista <- lee_autopista(fread("../dat/06020101_montmelo_la_junquera.csv"), "06020101_montmelo_la_junquera")
+autopista_TODAS <- lee_TODAS_autopista()
+
+nombres_autopistas <- fread("../dat/nombres_autopistas.txt", header = F)
+autopista_TODAS <- autopista_TODAS %>% mutate(IMD_total = ifelse(IMD_total < 50, IMD_total*1000, IMD_total))
+
 
 ```
 
@@ -48,6 +52,10 @@ Vamos a analizar con y sin aplicar logaritmos en base 10.
 
 Creo serie temporal y la pinto completa:
 ```{r}
+nombre_elegido <- "06020101_montmelo_la_junquera"
+autopista <- autopista_TODAS %>% filter(nombre == nombre_elegido)
+autopista <- autopista[, 1:2]
+
 ts_mensual <- ts(autopista$IMD_total, start=c(1990, 1), end=c(2017, 3), frequency=12)
 xts_mensual <- as_xts(autopista, date_col = Mes_numeric)
 
@@ -58,7 +66,7 @@ Para poder inspeccionar el detalle de los valores en la propia gráfica y hacer z
 ```{r}
 highchart(type = "stock") %>% 
   hc_title(text = "Time Serie") %>% 
-  hc_subtitle(text = "06020101_montmelo_la_junquera") %>% 
+  hc_subtitle(text = nombre_elegido) %>% 
   hc_add_series(ts_mensual, name = "IMD") %>% 
   hc_rangeSelector(inputEnabled = TRUE) %>% 
   hc_scrollbar(enabled = TRUE) %>% 
@@ -129,7 +137,7 @@ Creo serie temporal:
 log_xts_mensual <- round(log10(ts_mensual), 2)
 highchart(type = "stock") %>% 
   hc_title(text = "Time Serie") %>% 
-  hc_subtitle(text = "06020101_montmelo_la_junquera") %>% 
+  hc_subtitle(text = nombre_elegido) %>% 
   hc_add_series(log_xts_mensual, name = "IMD") %>% 
   hc_rangeSelector(inputEnabled = TRUE) %>% 
   hc_scrollbar(enabled = TRUE) %>% 
@@ -191,8 +199,9 @@ Vamos a analizar con y sin aplicar logaritmos en base 10.
 
 ```{r,  echo=FALSE}
 
-autopista <- lee_autopista(fread("../dat/06020701_madrid_guadalajara.csv"), "06020701_madrid_guadalajara")
-
+nombre_elegido <- "06020701_madrid_guadalajara"
+autopista <- autopista_TODAS %>% filter(nombre == nombre_elegido)
+autopista <- autopista[, 1:2]
 ```
 
 ## Estudio de los datos sin logartimos
@@ -209,7 +218,7 @@ Para poder inspeccionar el detalle de los valores en la propia gráfica y hacer z
 ```{r}
 highchart(type = "stock") %>% 
   hc_title(text = "Time Serie") %>% 
-  hc_subtitle(text = "06020701_madrid_guadalajara") %>% 
+  hc_subtitle(text = nombre_elegido) %>% 
   hc_add_series(ts_mensual, name = "IMD") %>% 
   hc_rangeSelector(inputEnabled = TRUE) %>% 
   hc_scrollbar(enabled = TRUE) %>% 
@@ -276,7 +285,7 @@ Creo serie temporal:
 log_xts_mensual <- round(log10(ts_mensual), 2)
 highchart(type = "stock") %>% 
   hc_title(text = "Time Serie") %>% 
-  hc_subtitle(text = "06020701_madrid_guadalajara") %>% 
+  hc_subtitle(text = nombre_elegido) %>% 
   hc_add_series(log_xts_mensual, name = "IMD") %>% 
   hc_rangeSelector(inputEnabled = TRUE) %>% 
   hc_scrollbar(enabled = TRUE) %>% 

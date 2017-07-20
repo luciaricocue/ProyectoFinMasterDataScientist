@@ -35,7 +35,7 @@ ui <- navbarPage("VISUALIZACION INTERACTIVA DE SERIES TEMPORALES Y MODELOS DE LO
                           br(),
                           br(),
                           "Los 4 modelos aplicados han sido ETS y ARIMA con y sin aplicar log en base 10 a los datos. Para mas detalle ver ",
-                          a("memoria", href="https://github.com/luciaricocue/ProyectoFinMasterDataScientist/tree/master/res"),
+                          a("memoria", href="https://github.com/luciaricocue/ProyectoFinMasterDataScientist/blob/master/res/Memoria_final.Rmd"),
                           br(),
                           br(),
                           "En un estudio previo se han obtenidos los errores de aplicar los 4 modelos a cada serie de cada autopista, y se ha escogido el modelo optimo en funcion del error minimo.",

@@ -38,18 +38,28 @@ http://www.fomento.gob.es/BE/?nivel=2&orden=06000000).
 ## Lectura y limpieza de datos
 
 Vamos a hacer tres funciones de lectura y limpieza para sacar la información mensual y anual de los ficheros de las 28 autopistas, que tienen estructuras similares (excepto el fichero de los datos globales "Total.", que no lo usaremos). 
+
 Usaremos los datos MENSUALES obtenidos de la limpieza para construir las series temporales.
+
 Usaremos los datos anuales solo para calcular el promedio de IMD (Intensidad Medida Diaria) en los datos de test (lo veremos más adelante).
+
 Los datos de cada una de las 28 autopistas los hemos almacenado en formato .csv en la carpeta dat.
-Estas serían las 3 funciones:
+
+Estas serían las 3 funciones del archivo `../src/funciones.R`:
+
 *`lee_TODAS_autopista` :función que lee todos los ficheros .csv almacenados en la carpeta dat y devuelve un data frame con todos los datos mensuales. 
+
 *`lee_autopista` :función que lee un solo .csv de una sola autopista seleccionada y devuelve un data frame con todos los datos mensuales. Es como la anterior pero para una sola autopista.
+
 *`lee_autopista_anual`: función que lee un solo .csv y devuelve los datos anuales. Tal como se ha indicado, solo la usaremos para calcular el IMD promedio.
 
 El fichero de cada autopista contiene datos para hacer 2 tablas, una de datos totales y otra de datos mensuale, ambas con información de la longitud de la autopista, IMD de vehículos pesados y totales y variaciones respecto al año anterior de los IMDs.
-Vamos a quedarnos a las salidas de las funciones mencionadas solo con los datos de fechas e IMD_total (IMD es una media de vehículos mensuales, pesados + ligeros, promediados por los días que tiene cada mes). Lo que intentaremos predecir los prócimos años será este IMD.
+
+Vamos a quedarnos a las salidas de las funciones mencionadas solo con los datos de fechas e IMD_total (IMD es una media de vehículos mensuales, pesados + ligeros, promediados por los días que tiene cada mes). Lo que intentaremos predecir los próximos años será este IMD.
+
 El resto de columnas que descartamos, tienen dependencia lineal con esta columna (variaciones e IMD_pesados), por lo que no aportan información extra. Tampoco vamos a considerar la lingitud de la autopista.
-Usaremos el fichero `nombres_autopistas.txt` de la carpeta dat, que contiene los nombres de todas las 28 autopistas, en los que se ha conservado el código numérico que las identifica en la web del Ministerio por si se necesitara para cualquier revisión futura.
+
+Usaremos el fichero `../dat/nombres_autopistas.txt` de la carpeta dat, que contiene los nombres de todas las 28 autopistas , en los que se ha conservado el código numérico que las identifica en la web del Ministerio por si se necesitara para cualquier revisión futura.
 
 ```{r,  echo=FALSE, warning=FALSE}
 
@@ -62,12 +72,12 @@ kable(nombres_autopistas)
 ```
 
 
-Hacemos una inspección visutal para detectar posibles "falsos outliers", valores muy bajos que realmente no son outliers, sino erratas de conversión de los datos por acabar en .000 antes de limpiar los datos (hay veces que se añaden por error siendo el número entero de más de 3 cifras y otras veces se añaden como decimales). Encontramos algunos y los corregimos de cara a los datos que usará Shiny.
+Hacemos una inspección visual para detectar posibles "falsos outliers", valores muy bajos que realmente no son outliers, sino erratas de conversión de los datos por acabar en .000 antes de limpiar los datos (hay veces que se añaden automáticamente por error siendo el número entero de más de 3 cifras y otras veces se añaden como decimales). Encontramos algunos y los corregimos:
 
 ```{r}
 
 falsos_outliers <- autopista_TODAS %>% filter(IMD_total < 50)
-falsos_outliers
+kable(falsos_outliers)
 
 ```
 
@@ -75,13 +85,12 @@ Los corregimos:
 ```{r}
 autopista_TODAS <- autopista_TODAS %>% mutate(IMD_total = ifelse(IMD_total < 50, IMD_total*1000, IMD_total))
 
-# write.csv(autopista_TODAS, "../dat/datos_TODAS_autopistas.txt") #Hemos guardado en memoria una copia
 ```
 
 
 Vamos a basarnos para los estudios en el libro "Forecasting: principles and practice" de Rob J Hyndman y George Athanasopoulos [en su web](https://www.otexts.org/fpp/1) para predecir el `IMD_total` de los próximos periodos.
 
-Escogemos una autopista al azar: `montmelo_la_junquera`
+Escogemos una autopista al azar: `06020101_montmelo_la_junquera`
 
 Vamos a analizarla en detalle  con y sin aplicar logaritmos en base 10. En cada caso (con y sin log) aplicaremos 2 modelos: ETS y ARIMA y a continuación aplicaremos la función forecast para predecir. Finalmente evaluaremos y compararemos los errores para elegir el mejor modelo.
 
@@ -133,8 +142,10 @@ Lo más destacable es la clara estacionalidad anual.
 
 ### Selección de conjuntos de entrenamiento (train) y testeo (test)
 Seleccionar 1 ventana de la serie temporal para train y otra para test. Tenemos datos completos de 27 años (desde 1990 a 2016 ambos inclusive). 
-Se hace una primera prueba y se dejan los 5 últimos años para test (son aporximadamente el 20% de los datos) y se observa gráficamente que para todos los modelos se incrementa el error a partir del tercer año, por lo que se reduce el intervalo de test a 2 años. 
-NOTA: No se cree relevante presentar en este reporte los resultados de las pruebas para 5 años, pero si así se requisiera se adjuntan en otro ficher en la misma carpeta res `ANALISIS_DESCARTE_de_intervalos_test_prediccion_5años.Rmd`.
+
+Se hace una primera prueba y se dejan los 5 últimos años para test (son aproximadamente el 20% de los datos) y se observa gráficamente que para todos los modelos se incrementa el error a partir del tercer año, por lo que se reduce el intervalo de test a 2 años. 
+
+NOTA: No se cree relevante presentar en este reporte los resultados de las pruebas para 5 años, pero si así se requisiera se adjuntan en otro fichero en la misma carpeta res `../res/ANALISIS_DESCARTE_de_intervalos_test_prediccion_5años.Rmd`.
 
 Representamos los conjuntos de test y train:
 
@@ -193,6 +204,7 @@ highchart(type = "stock") %>%
 ```
 
 Precisión:
+
 Se analizará en un apartado posterior con más detalle, comparando todos los modelos:
 
 ```{r}
@@ -201,6 +213,7 @@ accuracy(prediccion_ets,test)
 
 ###Modelado ARIMA y predicción:
 Vamos a usar el modelado ARIMA basado en la descripción de autocorrelación (suma de un  modelado de media móvil (MA) y uno de autorregresión (AR)).
+
 Lo aplicaremos  mediante la función `auto.arima()` para modelar la serie y luego le aplicamos la función `forecast()` para predecir un intervalo de 2 años (años 2015 y 2016 completos):
 
 ```{r}
@@ -208,8 +221,10 @@ fit_arima <- auto.arima(train)
 fit_arima
 ```
 
-El modelo óptimo es un ARIMA(1,1,3)(2,1,2)[12]:
-*La componente no estacional tiene orden 1 en la parte AR (autorregresiva), orden 3 en la parte AM (media móvil) y grado 1 de diferencia.
+El modelo óptimo es un ARIMA(2,1,0)(2,1,2)[12]:
+
+*La componente no estacional tiene orden 2 en la parte AR (autorregresiva), orden 0 en la parte AM (media móvil) y grado 1 de diferencia.
+
 *La componente estacional tiene orden 2 en la parte AR, orden 2 en la AM y grado 1 de diferencia.Tiene estacionalidad anual (12 meses) 
 
 La predicción:
@@ -410,8 +425,10 @@ accuracy(prediccion_arima_log,test_log)
 ## Comparativa de las precisiones/errores de las predicciones anteriores
 
 Construyo una tabla comparativa con los errores de todos los modelos.
+
 Nos quedamos los datos de test para comparar solo esos resultados, pues son los que más error tienen (respecto a los de train).
-Vamos a hacer una función que construye la tabla comparativa. Le pasamos a la función las prediciones obtenidas y los datos de test (para calcular también el error porcentual dividiendo error MAE/RMSE entre el promedio de los datos de test):
+
+Vamos a hacer una función que construye la tabla comparativa. Le pasamos a la función las prediciones obtenidas y el promedio de los datos de test (para calcular también el error porcentual dividiendo error MAE/RMSE entre el promedio de los datos de test):
 
 ```{r}
 inicio_test <- 2015
@@ -430,10 +447,12 @@ compara_predicciones_modelos <- construye_tabla_comparativa(prediccion_ets, pred
 kable(compara_predicciones_modelos, digits = 2)
 ```
 
+El modelo óptimo para esta serie sería el ETS sin aplicar logaritmos (menor MAE)
+
 ## Aplicación de los 4 modelos al resto de autopistas
 
 Por analogía, generamos un código que va a calcular los errores MAE/ RMSE resultantes de aplicar los 4 modelos (ETS/ ARIMA con y sin logaritmos) a cada autopista con un intervalo predictivo de 2 años (próximos 2015 y 2016). Esta sería la tabla resultante:
-NOTA: Esta ejecución tarda unos 15-18 minutos aproximadamente, por lo que se facilita en la carpeta dat una copia del resultado `comparando_TODOS.txt`, y vamos a trabajar con ella en lo que sigue, pero puede ejecutarse desde aquí descomentando la linea `source("../src/codigo_genera_comparando_TODOS.R")`.
+NOTA: Esta ejecución tarda unos 15-18 minutos aproximadamente, por lo que se facilita en la carpeta dat una copia del resultado `../dat/comparando_TODOS.txt`, y vamos a trabajar con ella en lo que sigue, pero puede ejecutarse desde aquí descomentando la linea `source("../src/codigo_genera_comparando_TODOS.R")`.
 
 ```{r, warning= FALSE}
 # source("../src/codigo_genera_comparando_TODOS.R")
@@ -445,7 +464,7 @@ kable(comparando_TODOS, digits = 2)
 
 ```
 
-Inspeccionando el resultado, vemos cual es el mejor modelo para minimizar el error al aplicarlo a la serie de cada autopista:
+Inspeccionando el resultado, vemos en la siguiente tabla cual es el mejor modelo para cada autopista, el que minimizar el error MAE/RMSE:
 
 ```{r}
 comparando_minimos <- comparando_TODOS %>% group_by(nombre, modelo) %>%
@@ -457,10 +476,8 @@ resumen <- comparando_minimos %>% filter(error_minimo == filtro) %>% select(c(1:
 kable(resumen, digits = 2)
 ```
 
-A continuación vamos a hacer una representación en Shiny de las series de todas las autopistas y de las predicciones con los modelos óptimos respectivos. Se mostrará en html en el documento `.Rmd`. 
+A continuación vamos a hacer una representación interactiva en Shiny de las series de todas las autopistas y de las predicciones de todas las series con todos los modelos. Se mostrará en html en el documento `Memoria_final_Shiny.Rmd` de la carpeta shiny y se hace lo mismo en `Shiny_App.R` de la misma carpeta. 
 
 Se deja como posible mejora el probar otros modelos a las autopistas con mayores errores para reducir el error, pero se escapa del alcance de este proyecto.
-```{r}
 
-```
 

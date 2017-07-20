@@ -102,7 +102,7 @@ for(i in nombres_autopistas$codigo_nombre_autopista){
   
 }
 comparando_TODOS <- comparando_TODOS[complete.cases(comparando_TODOS), ]
-write.csv(comparando_TODOS, "comparando_TODOS.txt")
+write.csv(comparando_TODOS, "../dat/comparando_TODOS.txt")
 
 
 

@@ -3,10 +3,13 @@ title: "Memoria_final_Shiny"
 author: "Lucia Rico Cuellar"
 date: "20 de julio de 2017"
 output: html_document
+runtime: shiny
 ---
 
-```{r, warning=FALSE}
 
+
+```{r eruptions, echo=FALSE, warning=FALSE}
+source("../src/funciones.R")
 library(data.table)
 library(reshape)
 library(zoo)
@@ -21,13 +24,6 @@ library(knitr)
 library(highcharter)
 library(shiny)
 library(datasets)
-source("../src/funciones.R")
-
-```
-
-
-```{r}
-
 #leo datos con la funcion
 autopistas_TODAS <- lee_TODAS_autopista()
 #quito algunos outliers
@@ -48,7 +44,7 @@ ui <- navbarPage("VISUALIZACION INTERACTIVA DE SERIES TEMPORALES Y MODELOS DE LO
                           br(),
                           br(),
                           "Los 4 modelos aplicados han sido ETS y ARIMA con y sin aplicar log en base 10 a los datos. Para mas detalle ver ",
-                          a("memoria", href="https://github.com/luciaricocue/ProyectoFinMasterDataScientist/tree/master/res"),
+                          a("memoria", href="https://github.com/luciaricocue/ProyectoFinMasterDataScientist/blob/master/res/Memoria_final.Rmd"),
                           br(),
                           br(),
                           "En un estudio previo se han obtenidos los errores de aplicar los 4 modelos a cada serie de cada autopista, y se ha escogido el modelo optimo en funcion del error minimo.",
