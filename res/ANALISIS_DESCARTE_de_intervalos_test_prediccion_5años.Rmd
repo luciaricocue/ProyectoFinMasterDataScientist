@@ -1,5 +1,5 @@
 ---
-title: "Proyecto Fin de Master"
+title: "ANALISIS_DESCARTE_de_intervalos_test_prediccion_5añosr"
 author: "Lucía Rico Cuéllar"
 date: "08 de julio de 2017"
 output: 
@@ -33,9 +33,9 @@ source("../src/funciones.R")
 
 Se presentan gráficas de predicción de intervalos de 5 años para 2 autopistas de prueba con diferente patrón, y se observa que a partir del tercer año empeoran las predicciones en todos los modelos de ambas autopistas, por lo que finalmente se elige un periodo de predicción de 2 años:
 
-## Lectura y limpieza de datos
+## Lectura y limpieza de datos EJEMPLO1
 
-```{r,  echo=FALSE}
+```{r,  echo=FALSE, warning=FALSE}
 
 autopista_TODAS <- lee_TODAS_autopista()
 
@@ -48,10 +48,10 @@ autopista_TODAS <- autopista_TODAS %>% mutate(IMD_total = ifelse(IMD_total < 50,
 Empezamos analizando la autopista : `06020101_montmelo_la_junquera.csv`
 Vamos a analizar con y sin aplicar logaritmos en base 10.
 
-## Estudio de los datos sin logartimos
+## Estudio de los datos sin logartimos EJEMPLO1
 
 Creo serie temporal y la pinto completa:
-```{r}
+```{r,  echo=FALSE}
 nombre_elegido <- "06020101_montmelo_la_junquera"
 autopista <- autopista_TODAS %>% filter(nombre == nombre_elegido)
 autopista <- autopista[, 1:2]
@@ -63,7 +63,7 @@ xts_mensual <- as_xts(autopista, date_col = Mes_numeric)
 
 Para poder inspeccionar el detalle de los valores en la propia gráfica y hacer zoom:
 
-```{r}
+```{r,  echo=FALSE}
 highchart(type = "stock") %>% 
   hc_title(text = "Time Serie") %>% 
   hc_subtitle(text = nombre_elegido) %>% 
@@ -74,14 +74,14 @@ highchart(type = "stock") %>%
 ```
 
 Resumen de estadísticas básicas de los datos:
-```{r}
+```{r,  echo=FALSE}
 summary(xts_mensual)
 ```
 
 
 ### Descomposición estacional
 
-```{r}
+```{r,  echo=FALSE}
 
 ts_mensual <- ts(autopista$IMD_total, start=c(1990, 1), end=c(2017, 3), frequency=12)
 autoplot(stl(ts_mensual, s.window="period"))
@@ -106,7 +106,7 @@ highchart(type = "stock") %>%
 
 
 ### Modelado exponencial ETS y predicción
-```{r}
+```{r,  echo=FALSE}
 
 fit_ets <- ets(train)
 prediccion_ets <- forecast(fit_ets, h=5*12)
@@ -119,8 +119,8 @@ lines(test, col="red")
 
 
 
-###Modelado ARIMA y predicción:
-```{r}
+###Modelado ARIMA y predicción
+```{r,  echo=FALSE}
 fit_arima <- auto.arima(train)
 prediccion_arima <- forecast(fit_arima, h=5*12)
 par(mfrow=c(1,1))
@@ -130,10 +130,12 @@ lines(test, col="red")
 
 
 
-##Voy a probar a hacer lo mismo pero aplicando primero log:
+## Estudio de los datos aplicando logartimos EJEMPLO1
+
+Voy a probar a hacer lo mismo que en el apartado anterior pero aplicando primero log:
 
 Creo serie temporal:
-```{r}
+```{r,  echo=FALSE}
 log_xts_mensual <- round(log10(ts_mensual), 2)
 highchart(type = "stock") %>% 
   hc_title(text = "Time Serie") %>% 
@@ -147,17 +149,17 @@ highchart(type = "stock") %>%
 ```
 
 Resumen de estadísticas básicas de los datos:
-```{r}
+```{r,  echo=FALSE}
 summary(log_xts_mensual)
 ```
 
 ###Descomposición estacional:
-```{r}
+```{r,  echo=FALSE}
 autoplot(stl(log_xts_mensual, s.window="period"))
 ```
 
 
-```{r}
+```{r,  echo=FALSE}
 
 train_log <- window(log_xts_mensual, start=c(1990, 01), end=c(2011, 12))
 test_log <- window(log_xts_mensual, start=c(2012, 01), end=c(2016, 12))
@@ -174,7 +176,7 @@ highchart(type = "stock") %>%
 
 
 ###Modelado exponencial ETS y predicción
-```{r}
+```{r,  echo=FALSE}
 fit_ets_log <- ets(train_log)
 prediccion_ets_log <- forecast(fit_ets_log, h=12*5)
 par(mfrow=c(1,1))
@@ -183,8 +185,8 @@ lines(test_log, col="red")
 ```
 
 
-###Modelado ARIMA y predicción:
-```{r}
+###Modelado ARIMA y predicción
+```{r,  echo=FALSE}
 fit_arima_log <- auto.arima(train_log)
 prediccion_arima_log <- forecast(fit_arima_log, h=12*5)
 plot(prediccion_arima_log)
@@ -195,7 +197,7 @@ lines(test_log, col="red")
 Analizamos ahora la autopista : `06020701_madrid_guadalajara`
 Vamos a analizar con y sin aplicar logaritmos en base 10.
 
-## Lectura y limpieza de datos
+## Lectura y limpieza de datos EJEMPLO2
 
 ```{r,  echo=FALSE}
 
@@ -204,10 +206,10 @@ autopista <- autopista_TODAS %>% filter(nombre == nombre_elegido)
 autopista <- autopista[, 1:2]
 ```
 
-## Estudio de los datos sin logartimos
+## Estudio de los datos sin logartimos EJEMPLO2
 
 Creo serie temporal y la pinto completa:
-```{r}
+```{r,  echo=FALSE}
 ts_mensual <- ts(autopista$IMD_total, start=c(1990, 1), end=c(2017, 3), frequency=12)
 xts_mensual <- as_xts(autopista, date_col = Mes_numeric)
 
@@ -215,7 +217,7 @@ xts_mensual <- as_xts(autopista, date_col = Mes_numeric)
 
 Para poder inspeccionar el detalle de los valores en la propia gráfica y hacer zoom:
 
-```{r}
+```{r,  echo=FALSE}
 highchart(type = "stock") %>% 
   hc_title(text = "Time Serie") %>% 
   hc_subtitle(text = nombre_elegido) %>% 
@@ -226,21 +228,21 @@ highchart(type = "stock") %>%
 ```
 
 Resumen de estadísticas básicas de los datos:
-```{r}
+```{r,  echo=FALSE}
 summary(xts_mensual)
 ```
 
 
 ### Descomposición estacional
 
-```{r}
+```{r,  echo=FALSE}
 ts_mensual <- ts(autopista$IMD_total, start=c(1990, 1), end=c(2017, 3), frequency=12)
 autoplot(stl(ts_mensual, s.window="period"))
 
 ```
 
 Intervalo de test 5 años:
-```{r}
+```{r,  echo=FALSE}
 
 train <- window(ts_mensual, start=c(1990, 01), end=c(2011, 12))
 test <- window(ts_mensual, start=c(2012, 01), end=c(2016, 12))
@@ -257,7 +259,7 @@ highchart(type = "stock") %>%
 
 
 ### Modelado exponencial ETS y predicción
-```{r}
+```{r,  echo=FALSE}
 fit_ets <- ets(train)
 prediccion_ets <- forecast(fit_ets, h=5*12)
 par(mfrow=c(1,1))
@@ -267,8 +269,8 @@ lines(test, col="red")
 ```
 
 
-###Modelado ARIMA y predicción:
-```{r}
+###Modelado ARIMA y predicción
+```{r,  echo=FALSE}
 fit_arima <- auto.arima(train)
 prediccion_arima <- forecast(fit_arima, h=5*12)
 par(mfrow=c(1,1))
@@ -278,10 +280,12 @@ lines(test, col="red")
 
 
 
-##Voy a probar a hacer lo mismo pero aplicando primero log:
+## Estudio de los datos aplicando logartimos EJEMPLO2
+
+Voy a probar a hacer lo mismo que en el apartado anterior pero aplicando primero log:
 
 Creo serie temporal:
-```{r}
+```{r,  echo=FALSE}
 log_xts_mensual <- round(log10(ts_mensual), 2)
 highchart(type = "stock") %>% 
   hc_title(text = "Time Serie") %>% 
@@ -295,17 +299,17 @@ highchart(type = "stock") %>%
 ```
 
 Resumen de estadísticas básicas de los datos:
-```{r}
+```{r,  echo=FALSE}
 summary(log_xts_mensual)
 ```
 
 ###Descomposición estacional:
-```{r}
+```{r,  echo=FALSE}
 autoplot(stl(log_xts_mensual, s.window="period"))
 ```
 
 
-```{r}
+```{r,  echo=FALSE}
 
 train_log <- window(log_xts_mensual, start=c(1990, 01), end=c(2011, 12))
 test_log <- window(log_xts_mensual, start=c(2012, 01), end=c(2016, 12))
@@ -322,7 +326,7 @@ highchart(type = "stock") %>%
 
 
 ###Modelado exponencial ETS y predicción
-```{r}
+```{r,  echo=FALSE}
 fit_ets_log <- ets(train_log)
 prediccion_ets_log <- forecast(fit_ets_log, h=12*5)
 par(mfrow=c(1,1))
@@ -331,15 +335,15 @@ lines(test_log, col="red")
 ```
 
 
-###Modelado ARIMA y predicción:
-```{r}
+###Modelado ARIMA y predicción
+```{r,  echo=FALSE}
 fit_arima_log <- auto.arima(train_log)
 prediccion_arima_log <- forecast(fit_arima_log, h=12*5)
 plot(prediccion_arima_log)
 lines(test_log, col="red")
 ```
 
-###Conclusiones:
+##Conclusiones
 Se observa claramente en todos los modelos que a partir del tercer año las predicciones se desvían del conjunto de test.
 
 
