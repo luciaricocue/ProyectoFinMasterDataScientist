@@ -29,7 +29,7 @@ colnames(nombres_autopistas) <- c("codigo_nombre_autopista")
 autopista_TODAS <- autopista_TODAS %>% mutate(IMD_total = ifelse(IMD_total < 50, IMD_total*1000, IMD_total))
 
 #corregimos outlier (ver Memoria_final.Rmd):
-autopista_TODAS[autopista_TODAS$nombre == nombre_elegido & autopista_TODAS$Mes_numeric == "oct. 2005", 2] <- 21691
+autopista_TODAS[autopista_TODAS$nombre == "06020203_sevilla_cadiz" & autopista_TODAS$Mes_numeric == "oct. 2005", 2] <- 21691
 
 for(i in nombres_autopistas$codigo_nombre_autopista){
   

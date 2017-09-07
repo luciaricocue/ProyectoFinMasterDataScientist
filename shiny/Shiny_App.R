@@ -19,7 +19,7 @@ source("../src/funciones.R")
 autopistas_TODAS <- lee_TODAS_autopista()
 #quito algunos outliers y falsos outliers
 autopistas_TODAS <- autopistas_TODAS %>% mutate(IMD_total = ifelse(IMD_total < 50, IMD_total*1000, IMD_total))
-autopistas_TODAS[autopistas_TODAS$nombre == nombre_elegido & autopistas_TODAS$Mes_numeric == "oct. 2005", 2] <- 21691
+autopistas_TODAS[autopistas_TODAS$nombre == "06020203_sevilla_cadiz" & autopistas_TODAS$Mes_numeric == "oct. 2005", 2] <- 21691
 
 # autopistas_TODAS <- fread("datos_TODAS_autopistas.txt", header=T, select = c(2:4))
 autopistas_TODAS <- as.data.frame(autopistas_TODAS)
