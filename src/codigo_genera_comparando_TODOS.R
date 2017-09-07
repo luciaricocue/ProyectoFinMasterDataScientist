@@ -11,9 +11,10 @@ library(forecast)
 library(ggplot2)
 library(knitr)
 library(highcharter)
+# library(imputeTS)
 source("../src/funciones.R")
 
-###CCÓDIGO QUE SACA LA TABLA CON LOS ERRORES MAE/RMSE RESULTANTES DE APLICAR LOS 4 MODELOS PREDICTIVOS (ETS y ARIMA con y sin log) A CADA AUTOPISTA CON UN INTERVALO DE PREDICCIÓN DE 2 AÑOS
+###CÓDIGO QUE SACA LA TABLA CON LOS ERRORES MAE/RMSE RESULTANTES DE APLICAR LOS 4 MODELOS PREDICTIVOS (ETS y ARIMA con y sin log) A CADA AUTOPISTA CON UN INTERVALO DE PREDICCIÓN DE 2 AÑOS
 nombres_autopistas <- fread("../dat/nombres_autopistas.txt", header = F)
 colnames(nombres_autopistas) <- c("codigo_nombre_autopista")
 comparando_TODOS <- as.data.frame(t(rep(NA, 6)))
@@ -23,6 +24,12 @@ autopista_TODAS <- lee_TODAS_autopista()
 nombres_autopistas <- fread("../dat/nombres_autopistas.txt", header = F)
 nombres_autopistas <- as.data.frame(nombres_autopistas)
 colnames(nombres_autopistas) <- c("codigo_nombre_autopista")
+
+#corregimos "falsos outliers" (ver Memoria_final.Rmd)
+autopista_TODAS <- autopista_TODAS %>% mutate(IMD_total = ifelse(IMD_total < 50, IMD_total*1000, IMD_total))
+
+#corregimos outlier (ver Memoria_final.Rmd):
+autopista_TODAS[autopista_TODAS$nombre == nombre_elegido & autopista_TODAS$Mes_numeric == "oct. 2005", 2] <- 21691
 
 for(i in nombres_autopistas$codigo_nombre_autopista){
   
@@ -55,12 +62,12 @@ for(i in nombres_autopistas$codigo_nombre_autopista){
   train <- window(ts_mensual, start=c(inicio_train, 01), end=c(fin_train, 12))
   test <- window(ts_mensual, start=c(inicio_test, 01), end=c(fin_test, 12))
   
-  
+  set.seed(123)
   fit_ets <- ets(train)
   
   prediccion_ets <- forecast(fit_ets, h = years_a_predecir*12)
   
-  
+  set.seed(123)
   fit_arima <- auto.arima(train)
   
   

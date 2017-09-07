@@ -25,20 +25,25 @@ autopistas_TODAS$nombre <- as.factor(autopistas_TODAS$nombre )
 autopistas_TODAS$Mes_numeric <- as.Date(autopistas_TODAS$Mes_numeric )
 
 
-ui <- navbarPage("VISUALIZACION INTERACTIVA DE SERIES TEMPORALES Y MODELOS DE LOS 4 ESTUDIADOS",
+ui <- navbarPage("VISUALIZACIONES INTERACTIVAS DE SERIES TEMPORALES Y MODELOS PREDICTIVOS",
                  
-                 tabPanel("Informacion previa",  
-                          "Los datos han sido descargados en Julio del 2017, aunque para entrenar los modelos predictivos se han usado solo datos hasta el 2016 y se han predicho los datos de 2017 y 2018.",
+                 tabPanel("Info. previa", 
+                          "Selecciona una autopista y consulta el resultado de aplicar cada uno de los 4 modelos.",
                           br(),
                           br(),
-                          "Lo que intentaremos predecir en los modelos sera el IMD mensual de los proximos periodos anuales de cada autopista. El IMD es una media de vehiculos mensuales, pesados + ligeros, promediados por los dias que tiene cada mes.",
+                          "Los datos han sido descargados en Julio del 2017, aunque para entrenar y testear los modelos predictivos se han usado solo datos hasta el 2016 y se han predicho los datos de 2017 y 2018.",
                           br(),
                           br(),
-                          "Los 4 modelos aplicados han sido ETS y ARIMA con y sin aplicar log en base 10 a los datos. Para mas detalle ver ",
+                          "Lo que intentaremos predecir en los modelos sera el IMD mensual de cada autopista. Ver detalles en",
                           a("memoria", href="https://github.com/luciaricocue/ProyectoFinMasterDataScientist/blob/master/res/Memoria_final.Rmd"),
                           br(),
                           br(),
-                          "En un estudio previo se han obtenidos los errores de aplicar los 4 modelos a cada serie de cada autopista, y se ha escogido el modelo optimo en funcion del error minimo.",
+                          "Los 4 modelos aplicados han sido ETS y ARIMA con y sin aplicar log en base 10 a los datos. Ver detalles en",
+                          a("memoria", href="https://github.com/luciaricocue/ProyectoFinMasterDataScientist/blob/master/res/Memoria_final.Rmd"),
+                          br(),
+                          br(),
+                          "En un estudio previo se han obtenidos los errores de aplicar los 4 modelos a cada serie de cada autopista para predecir los IMDs de 2015 y 2016, y se ha concluido cual es el modelo que predice mejor para cada autopista, es decir, con menor error (MAE/RMSE). Ver detalles en",
+                          a("memoria", href="https://github.com/luciaricocue/ProyectoFinMasterDataScientist/blob/master/res/Memoria_final.Rmd"),
                           br(),
                           br(),
                           "Se deja como posible mejora el estudiar otros modelos sobre las autopistas con mayores errores.",
@@ -51,10 +56,10 @@ ui <- navbarPage("VISUALIZACION INTERACTIVA DE SERIES TEMPORALES Y MODELOS DE LO
                           br(),
                           "Los datos han sido proporcionados por el Ministerio de Fomento desde su", 
                           a("web", href="http://www.fomento.gob.es/BE/?nivel=2&orden=06000000)"),
-                          ". Son datos del trafico en 28 autopistas de peaje del Estado.",
+                          ". Son datos del IMD en 28 autopistas de peaje del Estado.",
                           br(),
                           br(),
-                          a("Puedes descargarte el codigo y la memoria de Github", href="https://github.com/luciaricocue/ProyectoFinMasterDataScientist"),
+                          a("Puedes descargarte el proyecto completo de Github", href="https://github.com/luciaricocue/ProyectoFinMasterDataScientist"),
                           br(),
                           br(),
                           "Para cualquier duda puedes contactar conmigo:",
@@ -63,115 +68,118 @@ ui <- navbarPage("VISUALIZACION INTERACTIVA DE SERIES TEMPORALES Y MODELOS DE LO
                           a("luciaricocue@gmail.com", href="luciaricocue@gmail.com")
                           ),
                  
-                 tabPanel("Representacion st",
+                 tabPanel("Selecciona autopista",
+                          
+                            tags$style(type = "text/css", "#l_watershed2 {height: calc(100vh - 80px) !important;}"),
 
-                            titlePanel("Representacion de los datos de todas las autopistas como series temporales"),
+                            # h4("Se representan los datos de todas las autopistas como series temporales"),
 
                             sidebarLayout(
                               
                               sidebarPanel(
                                 
-                                selectInput('nombre_autopista', 'Nombre Autopista', 
+                                selectInput('nombre_autopista', 'Elige una autopista', 
+                                            
                                             as.character(levels(autopistas_TODAS$nombre)), 
                                             selected="06020301_tarragona_valencia_A_7")
 
                               ),
 
-                              mainPanel(
+                              # mainPanel(
                                 
                                 highchartOutput("hcontainer",height = "500px")
-                              )
+                              # )
                             )
                    ), 
-                   tabPanel("Representacion ETS",
+                   tabPanel("Modelado ETS",
                             
-                            titlePanel("Representacion de las predicciones del IMD de las autopistas con error minimo al aplicar ETS"),
-                            
+                            # titlePanel("Se representan las predicciones del IMD de las autopistas con menor error al aplicar ETS"),
+                            tags$style(type = "text/css", "#hcontainer2 {height: calc(100vh - 80px) !important;}"),
 
-                            sidebarLayout(
-                              
-                              sidebarPanel(
-                                
-                                selectInput('nombre_autopista2', 'Nombre Autopista', 
-                                            as.character(levels(autopistas_TODAS$nombre)), 
-                                            selected="06020301_tarragona_valencia_A_7")
-   
-                              ),
+                            # sidebarLayout(
+                            #   
+                            #   sidebarPanel(
+                              #   
+                              #   selectInput('nombre_autopista2', 'Nombre Autopista', 
+                              #               as.character(levels(autopistas_TODAS$nombre)), 
+                              #               selected="06020301_tarragona_valencia_A_7")
+                              # 
+                              # ),
                               
 
-                              mainPanel(
+                              # mainPanel(
                                 # plotOutput("plot2")
                                 highchartOutput("hcontainer2",height = "500px")
 
-                              )
-                            )
+                              # )
+                            # )
                    ),
-                 tabPanel("Representacion ARIMA",
+                 tabPanel("Modelado ARIMA",
                           
-                          titlePanel("Representacion de las predicciones del IMD de las autopistas con error minimo al aplicar ARIMA"),
+                          # titlePanel("Se representan las predicciones del IMD de las autopistas con menor error al aplicar ARIMA"),
 
-                          sidebarLayout(
+                          # sidebarLayout(
+                          #   
+                          #   sidebarPanel(
+                            #   
+                            #   selectInput('nombre_autopista3', 'Nombre Autopista', 
+                            #               as.character(levels(autopistas_TODAS$nombre)), 
+                            #               selected="06020301_tarragona_valencia_A_7")
+                            # 
+                            #   
+                            # ),
                             
-                            sidebarPanel(
-                              
-                              selectInput('nombre_autopista3', 'Nombre Autopista', 
-                                          as.character(levels(autopistas_TODAS$nombre)), 
-                                          selected="06020301_tarragona_valencia_A_7")
 
-                              
-                            ),
                             
-
-                            
-                            mainPanel(
+                            # mainPanel(
                               # plotOutput("plot3")
                               highchartOutput("hcontainer3",height = "500px")
-                            )
-                          )
+                            # )
+                          # )
                  ),
-                 tabPanel("Representacion ETS con log",
+                 tabPanel("Modelado ETS con log",
                           
-                          titlePanel("Representacion de las predicciones del IMD de las autopistas con error minimo al aplicar ETS con log"),
+                          # titlePanel("Se representan las predicciones del IMD de las autopistas con menor error al aplicar ETS con log"),
                           
                         
-                          sidebarLayout(
+                          # sidebarLayout(
+                          #   
+                          #   sidebarPanel(
+                            #   
+                            #   selectInput('nombre_autopista4', 'Nombre Autopista', 
+                            #               as.character(levels(autopistas_TODAS$nombre)), 
+                            #               selected="06020301_tarragona_valencia_A_7")
+                            # 
+                            # ),
                             
-                            sidebarPanel(
-                              
-                              selectInput('nombre_autopista4', 'Nombre Autopista', 
-                                          as.character(levels(autopistas_TODAS$nombre)), 
-                                          selected="06020301_tarragona_valencia_A_7")
 
-                            ),
-                            
-
-                            mainPanel(
+                            # mainPanel(
                               # plotOutput("plot4")
                               highchartOutput("hcontainer4",height = "500px")
-                            )
-                          )
+                            # )
+                          # )
                  ),
-                 tabPanel("Representacion ARIMA con log",
+                 tabPanel("Modelado ARIMA con log",
                           
-                          titlePanel("Representacion de las predicciones del IMD de las autopistas con error minimo al aplicar ARIMA con log"),
+                          # titlePanel("Se representan las predicciones del IMD de las autopistas con menor error al aplicar ARIMA con log"),
                           
 
-                          sidebarLayout(
+                          # sidebarLayout(
+                          #   
+                          #   sidebarPanel(
+                            #   
+                            #   selectInput('nombre_autopista5', 'Nombre Autopista', 
+                            #               as.character(levels(autopistas_TODAS$nombre)), 
+                            #               selected="06020301_tarragona_valencia_A_7")
+                            # 
+                            # ),
                             
-                            sidebarPanel(
-                              
-                              selectInput('nombre_autopista5', 'Nombre Autopista', 
-                                          as.character(levels(autopistas_TODAS$nombre)), 
-                                          selected="06020301_tarragona_valencia_A_7")
 
-                            ),
-                            
-
-                            mainPanel(
+                            # mainPanel(
                               # plotOutput("plot5")
                               highchartOutput("hcontainer5",height = "500px")
-                            )
-                          )
+                            # )
+                          # )
                  )
                   
              
@@ -228,7 +236,7 @@ server <- function(input, output) {
 #tabPanel "Representacion ETS":  
   formulaText2 <- reactive({
     
-    input$nombre_autopista2
+    input$nombre_autopista
   })
   
 
@@ -239,10 +247,10 @@ server <- function(input, output) {
   
   
   selectedDataI2 <- reactive({
-    if(is.null(input$nombre_autopista2))return()
+    if(is.null(input$nombre_autopista))return()
     
     autopistas_TODAS <- autopistas_TODAS %>% 
-      filter(nombre == input$nombre_autopista2) %>% 
+      filter(nombre == input$nombre_autopista) %>% 
       select(Mes_numeric, IMD_total) %>% arrange(Mes_numeric)
     
     
@@ -262,7 +270,7 @@ server <- function(input, output) {
     prediccion_ets2 <- forecast(ets(selectedDataI2()), h = 2*12)
     b <- highchart(type = "stock") %>%
       hc_title(text = "Time Serie") %>%
-      hc_subtitle(text = input$nombre_autopista2) %>%
+      hc_subtitle(text = input$nombre_autopista) %>%
       hc_add_series(selectedDataI2(), name = "IMD") %>%
       hc_add_series(prediccion_ets2, name = "IMD") %>%
       hc_rangeSelector(inputEnabled = TRUE) %>%
@@ -292,7 +300,7 @@ server <- function(input, output) {
     if(is.null(input$nombre_autopista))return()
     
     autopistas_TODAS <- autopistas_TODAS %>% 
-      filter(nombre == input$nombre_autopista3) %>% 
+      filter(nombre == input$nombre_autopista) %>% 
       select(Mes_numeric, IMD_total) %>% arrange(Mes_numeric)
     
     start_year3 <- as.numeric(year(autopistas_TODAS$Mes_numeric[1]))
@@ -319,7 +327,7 @@ server <- function(input, output) {
     prediccion_ets3 <- forecast(auto.arima(selectedDataI3()), h = 2*12)
     c <- highchart(type = "stock") %>%
       hc_title(text = "Time Serie") %>%
-      hc_subtitle(text = input$nombre_autopista3) %>%
+      hc_subtitle(text = input$nombre_autopista) %>%
       hc_add_series(selectedDataI3(), name = "IMD") %>%
       hc_add_series(prediccion_ets3, name = "IMD") %>%
       hc_rangeSelector(inputEnabled = TRUE) %>%
@@ -349,7 +357,7 @@ server <- function(input, output) {
     if(is.null(input$nombre_autopista))return()
     
     autopistas_TODAS <- autopistas_TODAS %>% 
-      filter(nombre == input$nombre_autopista4) %>% 
+      filter(nombre == input$nombre_autopista) %>% 
       select(Mes_numeric, IMD_total) %>% arrange(Mes_numeric)
     
     start_year4 <- as.numeric(year(autopistas_TODAS$Mes_numeric[1]))
@@ -377,7 +385,7 @@ server <- function(input, output) {
     prediccion_ets4 <- forecast(ets(selectedDataI4()), h = 2*12)
     d <- highchart(type = "stock") %>%
       hc_title(text = "Time Serie") %>%
-      hc_subtitle(text = input$nombre_autopista4) %>%
+      hc_subtitle(text = input$nombre_autopista) %>%
       hc_add_series(selectedDataI4(), name = "IMD") %>%
       hc_add_series(prediccion_ets4, name = "IMD") %>%
       hc_rangeSelector(inputEnabled = TRUE) %>%
@@ -405,7 +413,7 @@ server <- function(input, output) {
     if(is.null(input$nombre_autopista))return()
     
     autopistas_TODAS <- autopistas_TODAS %>% 
-      filter(nombre == input$nombre_autopista5) %>% 
+      filter(nombre == input$nombre_autopista) %>% 
       select(Mes_numeric, IMD_total) %>% arrange(Mes_numeric)
     
     start_year5 <- as.numeric(year(autopistas_TODAS$Mes_numeric[1]))
@@ -426,7 +434,7 @@ server <- function(input, output) {
     prediccion_ets5 <- forecast(auto.arima(selectedDataI5()), h = 2*12)
     e <- highchart(type = "stock") %>%
       hc_title(text = "Time Serie") %>%
-      hc_subtitle(text = input$nombre_autopista5) %>%
+      hc_subtitle(text = input$nombre_autopista) %>%
       hc_add_series(selectedDataI5(), name = "IMD") %>%
       hc_add_series(prediccion_ets5, name = "IMD") %>%
       hc_rangeSelector(inputEnabled = TRUE) %>%
