@@ -12,5 +12,5 @@ Lo que intentaremos predecir en los modelos sera el IMD mensual de cada autopist
 
 Los 4 modelos aplicados han sido ETS y ARIMA con y sin aplicar log en base 10 a los datos. 
 
-Para más detalle ver Memoria_final.Rmd  en carpeta res e implmentación en Shiny en carpeta shiny.
+Para más detalle ver "Memoria_final.Rmd"  en carpeta "res" e implementación en Shiny en carpeta "shiny".
 
